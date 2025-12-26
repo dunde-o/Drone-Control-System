@@ -1,0 +1,19 @@
+node_modules
+dist
+out
+build
+.DS_Store
+.eslintcache
+*.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE & Editor
+.vscode
+CLAUDE.md
+
+# MCP config (local)
+.mcp.json

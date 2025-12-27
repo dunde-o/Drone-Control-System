@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, globalShortcut, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, is } from '@electron-toolkit/utils'
+import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import icon from '../../resources/icon.png?asset'
 import DroneServer from '../server'
 import * as dotenv from 'dotenv'
@@ -52,12 +53,22 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
   // 빈 메뉴로 기본 단축키 비활성화 (Ctrl+R, Ctrl+Shift+I 등)
   Menu.setApplicationMenu(Menu.buildFromTemplate([]))
+
+  // 개발 모드에서 React DevTools 설치
+  if (is.dev) {
+    try {
+      await installExtension(REACT_DEVELOPER_TOOLS)
+      console.log('[Main] React DevTools installed')
+    } catch (err) {
+      console.error('[Main] Failed to install React DevTools:', err)
+    }
+  }
 
   // F12로 DevTools 토글 (개발 모드에서만)
   app.on('browser-window-created', (_, window) => {

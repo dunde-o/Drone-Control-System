@@ -23,4 +23,7 @@
 
 .pulse {
   @extend %marker-pulse;
+  width: 36px;
+  height: 36px;
+  background-color: vars.$color-success;
 }

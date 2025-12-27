@@ -11,6 +11,9 @@ export interface ServerConfig {
   baseMoveDuration?: number
   heartbeatInterval?: number
   droneUpdateInterval?: number
+  droneVerticalSpeed?: number // 수직 속도 (m/s)
+  droneFlySpeed?: number // 비행 속도 (m/s)
+  baseAltitude?: number // 베이스 적정 비행 고도 (m)
 }
 
 export interface ServerMessage {
@@ -23,6 +26,17 @@ export interface BasePosition {
   lng: number
 }
 
+export type DroneStatus =
+  | 'idle' // 대기 - 베이스에서 시작 가능
+  | 'ascending' // 이륙 중 - 베이스에서 적정 고도까지 상승 중
+  | 'hovering' // 대기 비행 - 적정 고도에서 다음 명령 대기 중
+  | 'moving' // 이동 중 - 지정 위치로 이동 중
+  | 'mia' // 통신 두절 - 신호 끊김으로 탐지 불가
+  | 'returning' // 복귀 중 - 베이스로 이동 중
+  | 'landing' // 착륙 중 - 현재 위치에서 착륙 중
+  | 'returning_auto' // 자동 복귀 - 고장/배터리 이슈로 자동 복귀 중
+  | 'landing_auto' // 자동 착륙 - 고장/배터리 이슈로 자동 착륙 중
+
 export interface Drone {
   id: string
   name: string
@@ -30,13 +44,17 @@ export interface Drone {
     lat: number
     lng: number
   }
-  status: 'idle' | 'flying' | 'returning' | 'charging'
+  altitude: number // 고도 (m)
+  status: DroneStatus
   battery: number
 }
 
 const DEFAULT_HEARTBEAT_INTERVAL = 3000 // 3 seconds
 const DEFAULT_BASE_MOVE_DURATION = 1000 // 1 second
 const DEFAULT_DRONE_UPDATE_INTERVAL = 200 // 0.2 seconds
+const DEFAULT_DRONE_VERTICAL_SPEED = 5 // 5 m/s
+const DEFAULT_DRONE_FLY_SPEED = 10 // 10 m/s
+const DEFAULT_BASE_ALTITUDE = 50 // 50 m
 
 class DroneServer extends EventEmitter {
   private wss: WebSocketServer | null = null
@@ -48,6 +66,9 @@ class DroneServer extends EventEmitter {
   private baseMoveDuration: number
   private heartbeatInterval: number
   private droneUpdateInterval: number
+  private droneVerticalSpeed: number
+  private droneFlySpeed: number
+  private baseAltitude: number
   private baseMoveTimeout: NodeJS.Timeout | null = null
   private drones: Map<string, Drone> = new Map()
   private droneIdCounter: number = 0
@@ -59,6 +80,9 @@ class DroneServer extends EventEmitter {
     this.baseMoveDuration = config.baseMoveDuration ?? DEFAULT_BASE_MOVE_DURATION
     this.heartbeatInterval = config.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL
     this.droneUpdateInterval = config.droneUpdateInterval ?? DEFAULT_DRONE_UPDATE_INTERVAL
+    this.droneVerticalSpeed = config.droneVerticalSpeed ?? DEFAULT_DRONE_VERTICAL_SPEED
+    this.droneFlySpeed = config.droneFlySpeed ?? DEFAULT_DRONE_FLY_SPEED
+    this.baseAltitude = config.baseAltitude ?? DEFAULT_BASE_ALTITUDE
   }
 
   start(): Promise<void> {
@@ -100,7 +124,10 @@ class DroneServer extends EventEmitter {
               config: {
                 baseMoveDuration: this.baseMoveDuration,
                 heartbeatInterval: this.heartbeatInterval,
-                droneUpdateInterval: this.droneUpdateInterval
+                droneUpdateInterval: this.droneUpdateInterval,
+                droneVerticalSpeed: this.droneVerticalSpeed,
+                droneFlySpeed: this.droneFlySpeed,
+                baseAltitude: this.baseAltitude
               }
             }
           })
@@ -171,7 +198,11 @@ class DroneServer extends EventEmitter {
           basePosition: this.basePosition,
           config: {
             baseMoveDuration: this.baseMoveDuration,
-            heartbeatInterval: this.heartbeatInterval
+            heartbeatInterval: this.heartbeatInterval,
+            droneUpdateInterval: this.droneUpdateInterval,
+            droneVerticalSpeed: this.droneVerticalSpeed,
+            droneFlySpeed: this.droneFlySpeed,
+            baseAltitude: this.baseAltitude
           }
         }
       })
@@ -193,12 +224,50 @@ class DroneServer extends EventEmitter {
   private startDroneUpdates(): void {
     this.droneUpdateTimer = setInterval(() => {
       if (this.drones.size > 0) {
+        // 드론 상태 시뮬레이션
+        this.simulateDrones()
+
         this.broadcast({
           type: 'drones:update',
           payload: { drones: this.getDronesArray() }
         })
       }
     }, this.droneUpdateInterval)
+  }
+
+  private simulateDrones(): void {
+    const deltaTime = this.droneUpdateInterval / 1000 // 초 단위로 변환
+
+    this.drones.forEach((drone) => {
+      switch (drone.status) {
+        case 'ascending':
+          // 수직 속도에 따라 고도 상승
+          drone.altitude += this.droneVerticalSpeed * deltaTime
+
+          // 적정 고도 도달 시 hovering 상태로 전환
+          if (drone.altitude >= this.baseAltitude) {
+            drone.altitude = this.baseAltitude
+            drone.status = 'hovering'
+            console.log(
+              `[Server] Drone ${drone.id} reached target altitude (${this.baseAltitude}m), now hovering`
+            )
+          }
+          break
+
+        case 'landing':
+        case 'landing_auto':
+          // 착륙 시 고도 하강
+          drone.altitude -= this.droneVerticalSpeed * deltaTime
+
+          // 지상 도달 시 idle 상태로 전환
+          if (drone.altitude <= 0) {
+            drone.altitude = 0
+            drone.status = 'idle'
+            console.log(`[Server] Drone ${drone.id} landed, now idle`)
+          }
+          break
+      }
+    })
   }
 
   private restartDroneUpdates(): void {
@@ -352,9 +421,9 @@ class DroneServer extends EventEmitter {
         if (payload && payload.droneId) {
           const drone = this.drones.get(payload.droneId)
           if (drone && drone.status === 'idle') {
-            drone.status = 'flying'
+            drone.status = 'ascending'
             drone.position = { ...this.basePosition }
-            console.log(`[Server] Drone ${drone.id} started flying from base`)
+            console.log(`[Server] Drone ${drone.id} ascending from base`)
 
             this.broadcast({
               type: 'drone:updated',
@@ -366,6 +435,63 @@ class DroneServer extends EventEmitter {
               payload: { error: 'Drone not found or not in idle state' }
             })
           }
+        }
+        break
+      }
+
+      case 'droneVerticalSpeed:update': {
+        const payload = message.payload as { speed?: number } | undefined
+        if (payload && typeof payload.speed === 'number' && payload.speed > 0) {
+          this.droneVerticalSpeed = payload.speed
+          console.log('[Server] Drone vertical speed updated:', this.droneVerticalSpeed)
+
+          this.broadcast({
+            type: 'droneVerticalSpeed:updated',
+            payload: { speed: this.droneVerticalSpeed }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'droneVerticalSpeed:error',
+            payload: { error: 'Invalid speed value (must be > 0)' }
+          })
+        }
+        break
+      }
+
+      case 'droneFlySpeed:update': {
+        const payload = message.payload as { speed?: number } | undefined
+        if (payload && typeof payload.speed === 'number' && payload.speed > 0) {
+          this.droneFlySpeed = payload.speed
+          console.log('[Server] Drone fly speed updated:', this.droneFlySpeed)
+
+          this.broadcast({
+            type: 'droneFlySpeed:updated',
+            payload: { speed: this.droneFlySpeed }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'droneFlySpeed:error',
+            payload: { error: 'Invalid speed value (must be > 0)' }
+          })
+        }
+        break
+      }
+
+      case 'baseAltitude:update': {
+        const payload = message.payload as { altitude?: number } | undefined
+        if (payload && typeof payload.altitude === 'number' && payload.altitude > 0) {
+          this.baseAltitude = payload.altitude
+          console.log('[Server] Base altitude updated:', this.baseAltitude)
+
+          this.broadcast({
+            type: 'baseAltitude:updated',
+            payload: { altitude: this.baseAltitude }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'baseAltitude:error',
+            payload: { error: 'Invalid altitude value (must be > 0)' }
+          })
         }
         break
       }
@@ -428,17 +554,15 @@ class DroneServer extends EventEmitter {
 
   private createDrone(): Drone {
     const id = `drone-${++this.droneIdCounter}`
-    // Random position near base
-    const offsetLat = (Math.random() - 0.5) * 0.01
-    const offsetLng = (Math.random() - 0.5) * 0.01
 
     return {
       id,
       name: `Drone ${this.droneIdCounter}`,
       position: {
-        lat: this.basePosition.lat + offsetLat,
-        lng: this.basePosition.lng + offsetLng
+        lat: this.basePosition.lat,
+        lng: this.basePosition.lng
       },
+      altitude: 0,
       status: 'idle',
       battery: 100
     }

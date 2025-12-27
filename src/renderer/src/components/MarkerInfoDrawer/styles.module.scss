@@ -108,3 +108,78 @@
   font-weight: 500;
   font-family: monospace;
 }
+
+.battery {
+  display: flex;
+  align-items: center;
+  gap: vars.$spacing-xs;
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-secondary;
+}
+
+.droneInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.coords {
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-primary;
+  font-family: monospace;
+}
+
+.altitude {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-secondary;
+  font-family: monospace;
+}
+
+.statusTag {
+  font-size: vars.$font-size-xs;
+  padding: 2px vars.$spacing-sm;
+  border-radius: vars.$border-radius-sm;
+}
+
+.statusIdle {
+  background-color: rgba(vars.$color-text-muted, 0.2);
+  color: vars.$color-text-secondary;
+}
+
+.statusAscending {
+  background-color: rgba(#9b59b6, 0.2);
+  color: #9b59b6;
+}
+
+.statusHovering {
+  background-color: rgba(vars.$color-primary, 0.2);
+  color: vars.$color-primary;
+}
+
+.statusMoving {
+  background-color: rgba(vars.$color-success, 0.2);
+  color: vars.$color-success;
+}
+
+.statusMia {
+  background-color: rgba(vars.$color-danger, 0.2);
+  color: vars.$color-danger;
+}
+
+.statusReturning {
+  background-color: rgba(vars.$color-warning, 0.2);
+  color: vars.$color-warning;
+}
+
+.statusLanding {
+  background-color: rgba(#3498db, 0.2);
+  color: #3498db;
+}
+
+.statusAuto {
+  background-color: rgba(vars.$color-danger, 0.15);
+  color: vars.$color-danger;
+}

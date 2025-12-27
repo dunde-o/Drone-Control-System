@@ -16,8 +16,9 @@ const DroneMarker = ({
   isSelected,
   onClick
 }: DroneMarkerProps): React.JSX.Element | null => {
-  // Only show marker for flying drones
-  if (drone.status !== 'flying' && drone.status !== 'returning') {
+  // Only show marker for airborne drones (not idle or landing)
+  const airborneStatuses = ['ascending', 'hovering', 'moving', 'returning', 'returning_auto', 'mia']
+  if (!airborneStatuses.includes(drone.status)) {
     return null
   }
 

@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 
-import { Battery, Loader2, Locate, MapPinned, Play, X } from 'lucide-react'
+import { ArrowUpFromLine, Battery, Loader2, Locate, MapPinned, Play, X } from 'lucide-react'
 
 import { useUpdateBasePosition } from '@renderer/hooks/mutations'
 import { useWebSocket } from '@renderer/contexts/WebSocketContext'
@@ -14,49 +14,40 @@ interface DroneCardProps {
   onStart: () => void
 }
 
-const DroneCard = ({ drone, onStart }: DroneCardProps): React.JSX.Element => {
-  const getStatusText = (status: Drone['status']): string => {
-    switch (status) {
-      case 'idle':
-        return '대기 중'
-      case 'flying':
-        return '비행 중'
-      case 'returning':
-        return '귀환 중'
-      case 'charging':
-        return '충전 중'
-      default:
-        return status
-    }
-  }
+const STATUS_CONFIG: Record<Drone['status'], { label: string; className: string }> = {
+  idle: { label: '대기', className: 'statusIdle' },
+  ascending: { label: '이륙 중', className: 'statusAscending' },
+  hovering: { label: '대기 비행', className: 'statusHovering' },
+  moving: { label: '이동 중', className: 'statusMoving' },
+  mia: { label: '통신 두절', className: 'statusMia' },
+  returning: { label: '복귀 중', className: 'statusReturning' },
+  landing: { label: '착륙 중', className: 'statusLanding' },
+  returning_auto: { label: '자동 복귀', className: 'statusAuto' },
+  landing_auto: { label: '자동 착륙', className: 'statusAuto' }
+}
 
-  const getStatusClass = (status: Drone['status']): string => {
-    switch (status) {
-      case 'idle':
-        return styles.statusIdle
-      case 'flying':
-        return styles.statusFlying
-      case 'returning':
-        return styles.statusReturning
-      case 'charging':
-        return styles.statusCharging
-      default:
-        return ''
-    }
+const DroneCard = ({ drone, onStart }: DroneCardProps): React.JSX.Element => {
+  const statusConfig = STATUS_CONFIG[drone.status] || {
+    label: drone.status,
+    className: 'statusIdle'
   }
 
   return (
     <div className={styles.droneCard}>
       <div className={styles.droneHeader}>
         <span className={styles.droneName}>{drone.name}</span>
-        <span className={`${styles.droneStatus} ${getStatusClass(drone.status)}`}>
-          {getStatusText(drone.status)}
+        <span className={`${styles.droneStatus} ${styles[statusConfig.className]}`}>
+          {statusConfig.label}
         </span>
       </div>
       <div className={styles.droneInfo}>
         <div className={styles.droneBattery}>
           <Battery size={14} />
           <span>{drone.battery}%</span>
+        </div>
+        <div className={styles.droneAltitude}>
+          <ArrowUpFromLine size={14} />
+          <span>{drone.altitude.toFixed(1)}m</span>
         </div>
       </div>
       {drone.status === 'idle' && (

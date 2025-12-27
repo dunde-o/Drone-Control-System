@@ -57,3 +57,45 @@ export const useUpdateDroneUpdateInterval = (): UseMutationResult<number, Error,
     }
   })
 }
+
+export const useUpdateDroneVerticalSpeed = (): UseMutationResult<number, Error, number> => {
+  const { sendMessage } = useWebSocket()
+
+  return useMutation({
+    mutationFn: async (speed: number): Promise<number> => {
+      sendMessage({
+        type: 'droneVerticalSpeed:update',
+        payload: { speed }
+      })
+      return speed
+    }
+  })
+}
+
+export const useUpdateDroneFlySpeed = (): UseMutationResult<number, Error, number> => {
+  const { sendMessage } = useWebSocket()
+
+  return useMutation({
+    mutationFn: async (speed: number): Promise<number> => {
+      sendMessage({
+        type: 'droneFlySpeed:update',
+        payload: { speed }
+      })
+      return speed
+    }
+  })
+}
+
+export const useUpdateBaseAltitude = (): UseMutationResult<number, Error, number> => {
+  const { sendMessage } = useWebSocket()
+
+  return useMutation({
+    mutationFn: async (altitude: number): Promise<number> => {
+      sendMessage({
+        type: 'baseAltitude:update',
+        payload: { altitude }
+      })
+      return altitude
+    }
+  })
+}

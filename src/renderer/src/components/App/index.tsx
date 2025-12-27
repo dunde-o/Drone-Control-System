@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
 import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-maps'
 
 import { useApiKey, useBaseMovement, useBasePosition, useDrones } from '@renderer/hooks/queries'
+import { Drone } from '@renderer/contexts/WebSocketContext/types'
 import Drawer from '@renderer/components/Drawer'
-import MarkerInfoDrawer, { MarkerInfo } from '@renderer/components/MarkerInfoDrawer'
+import MarkerInfoDrawer from '@renderer/components/MarkerInfoDrawer'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
 import DroneMarker from '@renderer/components/markers/DroneMarker'
 import MovementPath from '@renderer/components/MovementPath'
@@ -36,7 +37,7 @@ const App = (): React.JSX.Element => {
   // UI state
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('main')
-  const [selectedMarker, setSelectedMarker] = useState<MarkerInfo | null>(null)
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null)
 
   // Map picking state
   const [isPickingBase, setIsPickingBase] = useState(false)
@@ -53,6 +54,35 @@ const App = (): React.JSX.Element => {
   const { data: basePosition } = useBasePosition()
   const { data: baseMovement } = useBaseMovement()
   const { data: drones = [] } = useDrones()
+
+  // Compute selected marker info from real-time data
+  const selectedMarker = useMemo(() => {
+    if (!selectedMarkerId) return null
+
+    if (selectedMarkerId === 'base' && basePosition) {
+      return {
+        id: 'base' as const,
+        type: 'base' as const,
+        name: 'Base Station',
+        position: basePosition
+      }
+    }
+
+    const drone = drones.find((d) => d.id === selectedMarkerId)
+    if (drone) {
+      return {
+        id: drone.id,
+        type: 'drone' as const,
+        name: drone.name,
+        position: drone.position,
+        status: drone.status,
+        battery: drone.battery,
+        altitude: drone.altitude
+      }
+    }
+
+    return null
+  }, [selectedMarkerId, basePosition, drones])
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -99,24 +129,22 @@ const App = (): React.JSX.Element => {
         setPickingLng(String(lng))
         setIsPickingBase(false)
       } else {
-        setSelectedMarker(null)
+        setSelectedMarkerId(null)
       }
     },
     [isPickingBase]
   )
 
   const handleBaseMarkerClick = useCallback((): void => {
-    if (!basePosition) return
-    setSelectedMarker({
-      id: 'base',
-      type: 'base',
-      name: 'Base Station',
-      position: basePosition
-    })
-  }, [basePosition])
+    setSelectedMarkerId('base')
+  }, [])
+
+  const handleDroneMarkerClick = useCallback((drone: Drone): void => {
+    setSelectedMarkerId(drone.id)
+  }, [])
 
   const handleCloseMarkerInfo = useCallback((): void => {
-    setSelectedMarker(null)
+    setSelectedMarkerId(null)
   }, [])
 
   const handleSetPanTo = useCallback(
@@ -189,7 +217,12 @@ const App = (): React.JSX.Element => {
           />
         )}
         {drones.map((drone) => (
-          <DroneMarker key={drone.id} drone={drone} isSelected={selectedMarker?.id === drone.id} />
+          <DroneMarker
+            key={drone.id}
+            drone={drone}
+            isSelected={selectedMarker?.id === drone.id}
+            onClick={() => handleDroneMarkerClick(drone)}
+          />
         ))}
         {baseMovement && <MovementPath movement={baseMovement} />}
         <MapController onPanToBase={handleSetPanTo} />

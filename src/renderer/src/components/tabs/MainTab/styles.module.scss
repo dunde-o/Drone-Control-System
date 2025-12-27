@@ -176,9 +176,24 @@
   color: vars.$color-text-secondary;
 }
 
-.statusFlying {
+.statusAscending {
+  background-color: rgba(#9b59b6, 0.2);
+  color: #9b59b6;
+}
+
+.statusHovering {
   background-color: rgba(vars.$color-primary, 0.2);
   color: vars.$color-primary;
+}
+
+.statusMoving {
+  background-color: rgba(vars.$color-success, 0.2);
+  color: vars.$color-success;
+}
+
+.statusMia {
+  background-color: rgba(vars.$color-danger, 0.2);
+  color: vars.$color-danger;
 }
 
 .statusReturning {
@@ -186,9 +201,14 @@
   color: vars.$color-warning;
 }
 
-.statusCharging {
-  background-color: rgba(vars.$color-success, 0.2);
-  color: vars.$color-success;
+.statusLanding {
+  background-color: rgba(#3498db, 0.2);
+  color: #3498db;
+}
+
+.statusAuto {
+  background-color: rgba(vars.$color-danger, 0.15);
+  color: vars.$color-danger;
 }
 
 .droneInfo {
@@ -199,6 +219,14 @@
 }
 
 .droneBattery {
+  display: flex;
+  align-items: center;
+  gap: vars.$spacing-xs;
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-secondary;
+}
+
+.droneAltitude {
   display: flex;
   align-items: center;
   gap: vars.$spacing-xs;

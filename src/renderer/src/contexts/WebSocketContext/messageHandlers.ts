@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 
 import { queryKeys } from '@renderer/hooks/queries/queryKeys'
 import {
+  BaseAltitudePayload,
   BaseMoveDurationPayload,
   BaseMovement,
   BaseMovingPayload,
@@ -9,9 +10,11 @@ import {
   BasePositionPayload,
   Drone,
   DroneCountUpdatedPayload,
+  DroneFlySpeedPayload,
   DronesUpdatePayload,
   DroneUpdatedPayload,
   DroneUpdateIntervalPayload,
+  DroneVerticalSpeedPayload,
   HeartbeatIntervalPayload,
   HeartbeatPayload,
   ServerConfig,
@@ -84,6 +87,24 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       case 'droneUpdateInterval:error':
         console.error('[Client] Drone update interval update failed:', message.payload)
         break
+      case 'droneVerticalSpeed:updated':
+        handleDroneVerticalSpeedUpdated(message as WebSocketMessage<DroneVerticalSpeedPayload>)
+        break
+      case 'droneVerticalSpeed:error':
+        console.error('[Client] Drone vertical speed update failed:', message.payload)
+        break
+      case 'droneFlySpeed:updated':
+        handleDroneFlySpeedUpdated(message as WebSocketMessage<DroneFlySpeedPayload>)
+        break
+      case 'droneFlySpeed:error':
+        console.error('[Client] Drone fly speed update failed:', message.payload)
+        break
+      case 'baseAltitude:updated':
+        handleBaseAltitudeUpdated(message as WebSocketMessage<BaseAltitudePayload>)
+        break
+      case 'baseAltitude:error':
+        console.error('[Client] Base altitude update failed:', message.payload)
+        break
       default:
         console.info('[Client] Received:', message)
     }
@@ -113,12 +134,7 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
 
       // Update server config
       if (message.payload?.config) {
-        const { baseMoveDuration, heartbeatInterval, droneUpdateInterval } = message.payload.config
-        queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), {
-          baseMoveDuration,
-          heartbeatInterval,
-          droneUpdateInterval: droneUpdateInterval ?? 200
-        })
+        queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), message.payload.config)
       }
     }
 
@@ -172,7 +188,10 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
         baseMoveDuration: duration,
         heartbeatInterval: prev?.heartbeatInterval ?? 3000,
-        droneUpdateInterval: prev?.droneUpdateInterval ?? 200
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200,
+        droneVerticalSpeed: prev?.droneVerticalSpeed ?? 5,
+        droneFlySpeed: prev?.droneFlySpeed ?? 10,
+        baseAltitude: prev?.baseAltitude ?? 50
       }))
     }
   }
@@ -186,7 +205,10 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
         baseMoveDuration: prev?.baseMoveDuration ?? 0,
         heartbeatInterval: interval,
-        droneUpdateInterval: prev?.droneUpdateInterval ?? 200
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200,
+        droneVerticalSpeed: prev?.droneVerticalSpeed ?? 5,
+        droneFlySpeed: prev?.droneFlySpeed ?? 10,
+        baseAltitude: prev?.baseAltitude ?? 50
       }))
     }
   }
@@ -229,7 +251,57 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
         baseMoveDuration: prev?.baseMoveDuration ?? 0,
         heartbeatInterval: prev?.heartbeatInterval ?? 3000,
-        droneUpdateInterval: interval
+        droneUpdateInterval: interval,
+        droneVerticalSpeed: prev?.droneVerticalSpeed ?? 5,
+        droneFlySpeed: prev?.droneFlySpeed ?? 10,
+        baseAltitude: prev?.baseAltitude ?? 50
+      }))
+    }
+  }
+
+  function handleDroneVerticalSpeedUpdated(
+    message: WebSocketMessage<DroneVerticalSpeedPayload>
+  ): void {
+    console.info('[Client] Drone vertical speed updated:', message.payload)
+    if (message.payload) {
+      const { speed } = message.payload
+      queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
+        baseMoveDuration: prev?.baseMoveDuration ?? 0,
+        heartbeatInterval: prev?.heartbeatInterval ?? 3000,
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200,
+        droneVerticalSpeed: speed,
+        droneFlySpeed: prev?.droneFlySpeed ?? 10,
+        baseAltitude: prev?.baseAltitude ?? 50
+      }))
+    }
+  }
+
+  function handleDroneFlySpeedUpdated(message: WebSocketMessage<DroneFlySpeedPayload>): void {
+    console.info('[Client] Drone fly speed updated:', message.payload)
+    if (message.payload) {
+      const { speed } = message.payload
+      queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
+        baseMoveDuration: prev?.baseMoveDuration ?? 0,
+        heartbeatInterval: prev?.heartbeatInterval ?? 3000,
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200,
+        droneVerticalSpeed: prev?.droneVerticalSpeed ?? 5,
+        droneFlySpeed: speed,
+        baseAltitude: prev?.baseAltitude ?? 50
+      }))
+    }
+  }
+
+  function handleBaseAltitudeUpdated(message: WebSocketMessage<BaseAltitudePayload>): void {
+    console.info('[Client] Base altitude updated:', message.payload)
+    if (message.payload) {
+      const { altitude } = message.payload
+      queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
+        baseMoveDuration: prev?.baseMoveDuration ?? 0,
+        heartbeatInterval: prev?.heartbeatInterval ?? 3000,
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200,
+        droneVerticalSpeed: prev?.droneVerticalSpeed ?? 5,
+        droneFlySpeed: prev?.droneFlySpeed ?? 10,
+        baseAltitude: altitude
       }))
     }
   }

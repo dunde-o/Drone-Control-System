@@ -4,9 +4,12 @@ import { Loader2 } from 'lucide-react'
 
 import {
   useServerControl,
+  useUpdateBaseAltitude,
   useUpdateBaseMoveDuration,
   useUpdateDroneCount,
+  useUpdateDroneFlySpeed,
   useUpdateDroneUpdateInterval,
+  useUpdateDroneVerticalSpeed,
   useUpdateHeartbeatInterval
 } from '@renderer/hooks/mutations'
 import {
@@ -34,6 +37,9 @@ const ServerSettingsTab = (): React.JSX.Element => {
   const updateHeartbeatInterval = useUpdateHeartbeatInterval()
   const updateDroneCount = useUpdateDroneCount()
   const updateDroneUpdateInterval = useUpdateDroneUpdateInterval()
+  const updateDroneVerticalSpeed = useUpdateDroneVerticalSpeed()
+  const updateDroneFlySpeed = useUpdateDroneFlySpeed()
+  const updateBaseAltitude = useUpdateBaseAltitude()
 
   // Local input states
   const [serverHost, setServerHost] = useState(DEFAULT_SERVER_HOST)
@@ -42,6 +48,9 @@ const ServerSettingsTab = (): React.JSX.Element => {
   const [heartbeatIntervalInput, setHeartbeatIntervalInput] = useState('')
   const [droneCountInput, setDroneCountInput] = useState('')
   const [droneUpdateIntervalInput, setDroneUpdateIntervalInput] = useState('')
+  const [droneVerticalSpeedInput, setDroneVerticalSpeedInput] = useState('')
+  const [droneFlySpeedInput, setDroneFlySpeedInput] = useState('')
+  const [baseAltitudeInput, setBaseAltitudeInput] = useState('')
 
   const isConnected = connectionStatus === 'connected'
 
@@ -51,6 +60,9 @@ const ServerSettingsTab = (): React.JSX.Element => {
       setBaseMoveDurationInput(String(serverConfig.baseMoveDuration))
       setHeartbeatIntervalInput(String(serverConfig.heartbeatInterval))
       setDroneUpdateIntervalInput(String(serverConfig.droneUpdateInterval))
+      setDroneVerticalSpeedInput(String(serverConfig.droneVerticalSpeed))
+      setDroneFlySpeedInput(String(serverConfig.droneFlySpeed))
+      setBaseAltitudeInput(String(serverConfig.baseAltitude))
     }
   }, [serverConfig])
 
@@ -115,6 +127,36 @@ const ServerSettingsTab = (): React.JSX.Element => {
     updateDroneUpdateInterval.mutate(interval)
   }
 
+  const handleDroneVerticalSpeedChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setDroneVerticalSpeedInput(e.target.value)
+  }
+
+  const handleApplyDroneVerticalSpeed = (): void => {
+    const speed = parseFloat(droneVerticalSpeedInput)
+    if (isNaN(speed) || speed <= 0) return
+    updateDroneVerticalSpeed.mutate(speed)
+  }
+
+  const handleDroneFlySpeedChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setDroneFlySpeedInput(e.target.value)
+  }
+
+  const handleApplyDroneFlySpeed = (): void => {
+    const speed = parseFloat(droneFlySpeedInput)
+    if (isNaN(speed) || speed <= 0) return
+    updateDroneFlySpeed.mutate(speed)
+  }
+
+  const handleBaseAltitudeChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setBaseAltitudeInput(e.target.value)
+  }
+
+  const handleApplyBaseAltitude = (): void => {
+    const altitude = parseFloat(baseAltitudeInput)
+    if (isNaN(altitude) || altitude <= 0) return
+    updateBaseAltitude.mutate(altitude)
+  }
+
   const getConnectionStatusText = (): string => {
     switch (connectionStatus) {
       case 'connecting':
@@ -141,6 +183,9 @@ const ServerSettingsTab = (): React.JSX.Element => {
   const isHeartbeatIntervalUpdating = updateHeartbeatInterval.isPending
   const isDroneCountUpdating = updateDroneCount.isPending
   const isDroneUpdateIntervalUpdating = updateDroneUpdateInterval.isPending
+  const isDroneVerticalSpeedUpdating = updateDroneVerticalSpeed.isPending
+  const isDroneFlySpeedUpdating = updateDroneFlySpeed.isPending
+  const isBaseAltitudeUpdating = updateBaseAltitude.isPending
 
   const isBaseMoveDurationUnchanged =
     serverConfig && baseMoveDurationInput === String(serverConfig.baseMoveDuration)
@@ -149,6 +194,12 @@ const ServerSettingsTab = (): React.JSX.Element => {
   const isDroneCountUnchanged = droneCountInput === String(drones.length)
   const isDroneUpdateIntervalUnchanged =
     serverConfig && droneUpdateIntervalInput === String(serverConfig.droneUpdateInterval)
+  const isDroneVerticalSpeedUnchanged =
+    serverConfig && droneVerticalSpeedInput === String(serverConfig.droneVerticalSpeed)
+  const isDroneFlySpeedUnchanged =
+    serverConfig && droneFlySpeedInput === String(serverConfig.droneFlySpeed)
+  const isBaseAltitudeUnchanged =
+    serverConfig && baseAltitudeInput === String(serverConfig.baseAltitude)
 
   return (
     <div className={styles.container}>
@@ -326,6 +377,91 @@ const ServerSettingsTab = (): React.JSX.Element => {
               ) : (
                 '적용'
               )}
+            </button>
+          </div>
+        </div>
+        <div className={styles.durationRow}>
+          <label className={styles.statusLabel}>드론 수직 속도 (m/s):</label>
+          <div className={styles.durationInputGroup}>
+            <input
+              type="number"
+              value={droneVerticalSpeedInput}
+              onChange={handleDroneVerticalSpeedChange}
+              className={styles.durationInput}
+              min="0.1"
+              step="0.5"
+              disabled={!isConnected || isDroneVerticalSpeedUpdating}
+              placeholder="-"
+            />
+            <button
+              onClick={handleApplyDroneVerticalSpeed}
+              className={styles.applyButton}
+              disabled={
+                !isConnected ||
+                !droneVerticalSpeedInput ||
+                isDroneVerticalSpeedUpdating ||
+                !!isDroneVerticalSpeedUnchanged
+              }
+            >
+              {isDroneVerticalSpeedUpdating ? (
+                <Loader2 size={14} className={styles.spinner} />
+              ) : (
+                '적용'
+              )}
+            </button>
+          </div>
+        </div>
+        <div className={styles.durationRow}>
+          <label className={styles.statusLabel}>드론 비행 속도 (m/s):</label>
+          <div className={styles.durationInputGroup}>
+            <input
+              type="number"
+              value={droneFlySpeedInput}
+              onChange={handleDroneFlySpeedChange}
+              className={styles.durationInput}
+              min="0.1"
+              step="1"
+              disabled={!isConnected || isDroneFlySpeedUpdating}
+              placeholder="-"
+            />
+            <button
+              onClick={handleApplyDroneFlySpeed}
+              className={styles.applyButton}
+              disabled={
+                !isConnected ||
+                !droneFlySpeedInput ||
+                isDroneFlySpeedUpdating ||
+                !!isDroneFlySpeedUnchanged
+              }
+            >
+              {isDroneFlySpeedUpdating ? <Loader2 size={14} className={styles.spinner} /> : '적용'}
+            </button>
+          </div>
+        </div>
+        <div className={styles.durationRow}>
+          <label className={styles.statusLabel}>적정 비행 고도 (m):</label>
+          <div className={styles.durationInputGroup}>
+            <input
+              type="number"
+              value={baseAltitudeInput}
+              onChange={handleBaseAltitudeChange}
+              className={styles.durationInput}
+              min="1"
+              step="5"
+              disabled={!isConnected || isBaseAltitudeUpdating}
+              placeholder="-"
+            />
+            <button
+              onClick={handleApplyBaseAltitude}
+              className={styles.applyButton}
+              disabled={
+                !isConnected ||
+                !baseAltitudeInput ||
+                isBaseAltitudeUpdating ||
+                !!isBaseAltitudeUnchanged
+              }
+            >
+              {isBaseAltitudeUpdating ? <Loader2 size={14} className={styles.spinner} /> : '적용'}
             </button>
           </div>
         </div>

@@ -1,37 +1,27 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
-import { DEFAULT_API_KEY } from '@renderer/components/App/constants'
-import { queryKeys } from './queryKeys'
+import { INITIAL_API_KEY } from '@renderer/components/App/constants'
 
 const STORAGE_KEY = 'google-maps-api-key'
-
-const getStoredApiKey = (): string => {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored ?? DEFAULT_API_KEY
-}
 
 interface UseApiKeyReturn {
   apiKey: string
   setApiKey: (newKey: string) => void
 }
 
+/**
+ * API 키 관리 훅
+ *
+ * INITIAL_API_KEY는 모듈 로드 시점에 constants.ts에서 한 번만 읽어온 값.
+ * 이 훅에서는 상태를 관리하지 않고, 저장만 담당함.
+ * API 키 변경 시에는 페이지 새로고침이 필요함 (Google Maps API 특성상).
+ */
 export const useApiKey = (): UseApiKeyReturn => {
-  const queryClient = useQueryClient()
+  const setApiKey = useCallback((newKey: string) => {
+    localStorage.setItem(STORAGE_KEY, newKey)
+    // API 키 변경 후에는 페이지 새로고침이 필요함
+    // (ApiSettingsTab에서 reload 처리)
+  }, [])
 
-  const { data: apiKey = DEFAULT_API_KEY } = useQuery<string>({
-    queryKey: queryKeys.settings.apiKey(),
-    queryFn: getStoredApiKey,
-    staleTime: Infinity
-  })
-
-  const setApiKey = useCallback(
-    (newKey: string) => {
-      localStorage.setItem(STORAGE_KEY, newKey)
-      queryClient.setQueryData<string>(queryKeys.settings.apiKey(), newKey)
-    },
-    [queryClient]
-  )
-
-  return { apiKey, setApiKey }
+  return { apiKey: INITIAL_API_KEY, setApiKey }
 }

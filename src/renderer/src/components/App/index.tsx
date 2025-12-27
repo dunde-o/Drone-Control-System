@@ -152,6 +152,7 @@ const App = (): React.JSX.Element => {
   const { data: basePosition } = useBasePosition()
   const { data: baseMovement } = useBaseMovement()
 
+
   useEffect(() => {
     activeTabRef.current = activeTab
     drawerOpenRef.current = drawerOpen
@@ -456,7 +457,7 @@ const App = (): React.JSX.Element => {
   }, [])
 
   return (
-    <APIProvider apiKey={apiKey}>
+    <APIProvider key={apiKey} apiKey={apiKey}>
       <Map
         style={{ width: '100%', height: '100%' }}
         defaultCenter={DEFAULT_MAP_CENTER}

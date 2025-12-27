@@ -1,19 +1,30 @@
-import { ChangeEvent, useState } from 'react'
+import { ChangeEvent, useState, useEffect } from 'react'
 
 import { useApiKey } from '@renderer/hooks/queries'
 
 import styles from './styles.module.scss'
 
 const ApiSettingsTab = (): React.JSX.Element => {
-  const { apiKey, setApiKey } = useApiKey()
+  const { apiKey } = useApiKey()
   const [apiKeyInput, setApiKeyInput] = useState(apiKey)
+
+  // apiKey가 변경되면 input 동기화 (React Query 로드 완료 시)
+  useEffect(() => {
+    setApiKeyInput(apiKey)
+  }, [apiKey])
 
   const handleApiKeyInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setApiKeyInput(e.target.value)
   }
 
   const handleApplyApiKey = (): void => {
-    setApiKey(apiKeyInput)
+    // localStorage에 직접 저장 후 reload
+    localStorage.setItem('google-maps-api-key', apiKeyInput)
+    console.log('[ApiSettingsTab] Saved API Key:', apiKeyInput)
+    console.log('[ApiSettingsTab] Verify:', localStorage.getItem('google-maps-api-key'))
+    setTimeout(() => {
+      window.location.reload()
+    }, 100)
   }
 
   const handleOpenCloudConsole = (): void => {
@@ -40,7 +51,7 @@ const ApiSettingsTab = (): React.JSX.Element => {
             적용
           </button>
         </div>
-        <p className={styles.hint}>API 키 변경 시 페이지 새로고침이 필요할 수 있습니다</p>
+        <p className={styles.hint}>적용 시 페이지가 새로고침됩니다</p>
       </div>
 
       <div className={styles.usageBox}>

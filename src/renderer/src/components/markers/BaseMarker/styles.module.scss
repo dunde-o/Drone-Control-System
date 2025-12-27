@@ -1,54 +1,24 @@
 @use '~styles/variables' as vars;
+@use '~components/markers/common' as *;
+
+.wrapper {
+  @extend %marker-wrapper;
+}
 
 .marker {
-  position: relative;
-  width: 48px;
-  height: 48px;
+  @extend %marker-base;
+  --marker-color: #{vars.$color-primary};
   background-color: vars.$color-primary;
-  border-radius: 50%;
-  border: 3px solid white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
-  transition:
-    transform 0.2s,
-    filter 0.2s;
-  overflow: hidden;
-  transform: translateY(50%);
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      135deg,
-      transparent 40%,
-      rgba(255, 255, 255, 0.6) 50%,
-      transparent 60%
-    );
-    animation: shimmer 2s infinite;
+  &:hover:not(.selected) {
+    @extend %marker-hover;
   }
 
-  &:hover {
-    transform: translateY(50%) scale(1.1);
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+  &.selected {
+    @extend %marker-selected;
   }
 }
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(100%) translateY(100%);
-  }
-  80% {
-    transform: translateX(-100%) translateY(-100%);
-  }
-  100% {
-    transform: translateX(-100%) translateY(-100%);
-  }
+.pulse {
+  @extend %marker-pulse;
 }

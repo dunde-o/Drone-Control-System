@@ -8,13 +8,26 @@ interface BaseMarkerProps {
     lat: number
     lng: number
   }
+  isSelected?: boolean
+  onClick?: () => void
 }
 
-const BaseMarker = ({ position }: BaseMarkerProps): React.JSX.Element => {
+const BaseMarker = ({ position, isSelected, onClick }: BaseMarkerProps): React.JSX.Element => {
+  const handleClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    onClick?.()
+  }
+
   return (
     <AdvancedMarker position={position} title="Base">
-      <div className={styles.marker}>
-        <Home size={24} strokeWidth={2.5} />
+      <div className={styles.wrapper}>
+        {isSelected && <span className={styles.pulse} />}
+        <div
+          className={`${styles.marker} ${isSelected ? styles.selected : ''}`}
+          onClick={handleClick}
+        >
+          <Home size={24} strokeWidth={2.5} />
+        </div>
       </div>
     </AdvancedMarker>
   )

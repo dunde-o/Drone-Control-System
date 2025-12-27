@@ -1,0 +1,110 @@
+@use '~styles/variables' as vars;
+
+.drawer {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  max-width: calc(100% - 32px);
+  background-color: vars.$color-background;
+  border-radius: vars.$border-radius-xl vars.$border-radius-xl 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: vars.$spacing-md;
+  padding: vars.$spacing-lg;
+  border-bottom: 1px solid vars.$color-border;
+}
+
+.title {
+  margin: 0;
+  font-size: vars.$font-size-base;
+  color: vars.$color-text-primary;
+  flex: 1;
+}
+
+.type {
+  font-size: vars.$font-size-xs;
+  color: white;
+  background-color: vars.$color-primary;
+  padding: vars.$spacing-xs vars.$spacing-sm;
+  border-radius: vars.$border-radius-sm;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: transparent;
+  color: vars.$color-text-secondary;
+  cursor: pointer;
+  transition: background-color vars.$transition-fast;
+
+  &:hover {
+    background-color: vars.$color-background-box;
+  }
+}
+
+.content {
+  padding: vars.$spacing-lg;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.section {
+  &:not(:last-child) {
+    margin-bottom: vars.$spacing-xl;
+  }
+}
+
+.sectionTitle {
+  margin: 0 0 vars.$spacing-md;
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-muted;
+  font-weight: 600;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: vars.$spacing-sm 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid vars.$color-border;
+  }
+}
+
+.label {
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-secondary;
+}
+
+.value {
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-primary;
+  font-weight: 500;
+  font-family: monospace;
+}

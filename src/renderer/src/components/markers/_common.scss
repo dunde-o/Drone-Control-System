@@ -1,0 +1,124 @@
+@use '~styles/variables' as vars;
+
+// 무지개 글로우 회전 애니메이션
+@keyframes rainbow-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+// 선택 펄스 애니메이션 (퍼져나가는 효과)
+@keyframes pulse-expand {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+// shimmer 광원 효과 애니메이션
+@keyframes shimmer {
+  0% {
+    transform: translateX(100%) translateY(100%);
+  }
+  80% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+  100% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+}
+
+// 공통 마커 스타일
+%marker-base {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  transition:
+    transform 0.2s,
+    filter 0.2s,
+    box-shadow 0.3s;
+  overflow: hidden;
+
+  // shimmer 효과
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      135deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 60%
+    );
+    animation: shimmer 2s infinite;
+  }
+}
+
+// 호버 상태 (무지개 글로우)
+%marker-hover {
+  transform: scale(1.1);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      #ff0000,
+      #ff8000,
+      #ffff00,
+      #00ff00,
+      #00ffff,
+      #0000ff,
+      #ff00ff,
+      #ff0000
+    );
+    z-index: -1;
+    animation: rainbow-rotate 2s linear infinite;
+    filter: blur(12px);
+    opacity: 0.9;
+  }
+}
+
+// 선택된 상태
+%marker-selected {
+  transform: scale(1.15);
+}
+
+// 마커 래퍼 (펄스 효과용)
+%marker-wrapper {
+  position: relative;
+  transform: translateY(50%);
+}
+
+// 펄스 효과 엘리먼트
+%marker-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--marker-color, vars.$color-primary);
+  z-index: -1;
+  animation: pulse-expand 1.5s ease-out infinite;
+}

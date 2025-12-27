@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, ChangeEvent, useCallback } from 'react'
 import { APIProvider, Map, MapMouseEvent } from '@vis.gl/react-google-maps'
 
 import Drawer from '../Drawer'
+import MarkerInfoDrawer, { MarkerInfo } from '../MarkerInfoDrawer'
 import BaseMarker from '../markers/BaseMarker'
 import TabContent from '../tabs'
 import { TABS } from '../tabs/constants'
@@ -19,6 +20,7 @@ const App = (): React.JSX.Element => {
   const [baseLngInput, setBaseLngInput] = useState(String(DEFAULT_BASE_POSITION.lng))
   const [isPickingBase, setIsPickingBase] = useState(false)
   const [savedBaseInputs, setSavedBaseInputs] = useState({ lat: '', lng: '' })
+  const [selectedMarker, setSelectedMarker] = useState<MarkerInfo | null>(null)
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
 
@@ -91,10 +93,25 @@ const App = (): React.JSX.Element => {
         setBaseLatInput(String(lat))
         setBaseLngInput(String(lng))
         setIsPickingBase(false)
+      } else {
+        setSelectedMarker(null)
       }
     },
     [isPickingBase]
   )
+
+  const handleBaseMarkerClick = useCallback((): void => {
+    setSelectedMarker({
+      id: 'base',
+      type: 'base',
+      name: 'Base Station',
+      position: basePosition
+    })
+  }, [basePosition])
+
+  const handleCloseMarkerInfo = useCallback((): void => {
+    setSelectedMarker(null)
+  }, [])
 
   const handleMapMouseMove = useCallback(
     (e: MapMouseEvent): void => {
@@ -145,8 +162,14 @@ const App = (): React.JSX.Element => {
         onClick={handleMapClick}
         onMousemove={handleMapMouseMove}
       >
-        <BaseMarker position={basePosition} />
+        <BaseMarker
+          position={basePosition}
+          isSelected={selectedMarker?.id === 'base'}
+          onClick={handleBaseMarkerClick}
+        />
       </Map>
+
+      <MarkerInfoDrawer marker={selectedMarker} onClose={handleCloseMarkerInfo} />
 
       <Drawer
         isOpen={drawerOpen}

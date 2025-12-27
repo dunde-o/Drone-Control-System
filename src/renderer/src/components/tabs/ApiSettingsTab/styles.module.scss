@@ -1,6 +1,6 @@
-@use '../../../styles/variables' as vars;
-@use '../../../styles/mixins' as *;
-@use '../common' as *;
+@use '~styles/variables' as vars;
+@use '~styles/mixins' as *;
+@use '~components/tabs/common' as *;
 
 .container {
   @extend %tabContainer;

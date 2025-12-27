@@ -1,5 +1,5 @@
-@use '../../styles/variables' as vars;
-@use '../../styles/mixins' as *;
+@use '~styles/variables' as vars;
+@use '~styles/mixins' as *;
 
 // 탭 공통 컨테이너 스타일
 %tabContainer {

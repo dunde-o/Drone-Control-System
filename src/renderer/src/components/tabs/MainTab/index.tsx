@@ -7,6 +7,8 @@ import styles from './styles.module.scss'
 interface MainTabProps {
   baseLat: string
   baseLng: string
+  baseLatServer: string
+  baseLngServer: string
   onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
   onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBase: () => void
@@ -19,6 +21,8 @@ interface MainTabProps {
 const MainTab = ({
   baseLat,
   baseLng,
+  baseLatServer,
+  baseLngServer,
   onBaseLatChange,
   onBaseLngChange,
   onApplyBase,
@@ -27,7 +31,13 @@ const MainTab = ({
   isBaseEnabled,
   isBaseUpdating
 }: MainTabProps): React.JSX.Element => {
-  const isDisabled = !isBaseEnabled || isBaseUpdating
+  const isInputDisabled = !isBaseEnabled || isBaseUpdating
+  const isApplyDisabled =
+    !isBaseEnabled ||
+    isBaseUpdating ||
+    !baseLat ||
+    !baseLng ||
+    (baseLat === baseLatServer && baseLng === baseLngServer)
 
   return (
     <div className={styles.container}>
@@ -48,7 +58,7 @@ const MainTab = ({
               onChange={onBaseLatChange}
               placeholder={isBaseEnabled ? '37.5665' : '-'}
               className={styles.input}
-              disabled={isDisabled}
+              disabled={isInputDisabled}
             />
           </div>
           <div className={styles.coordInput}>
@@ -60,12 +70,12 @@ const MainTab = ({
               onChange={onBaseLngChange}
               placeholder={isBaseEnabled ? '126.978' : '-'}
               className={styles.input}
-              disabled={isDisabled}
+              disabled={isInputDisabled}
             />
           </div>
         </div>
         <div className={styles.buttonGroup}>
-          <button onClick={onApplyBase} className={styles.button} disabled={isDisabled}>
+          <button onClick={onApplyBase} className={styles.button} disabled={isApplyDisabled}>
             {isBaseUpdating ? (
               <>
                 <Loader2 size={16} className={styles.spinner} />
@@ -79,7 +89,7 @@ const MainTab = ({
             onClick={onTogglePickBase}
             className={`${styles.pickButton} ${isPickingBase ? styles.active : ''}`}
             title={isPickingBase ? '선택 취소' : '지도에서 선택'}
-            disabled={isDisabled}
+            disabled={isInputDisabled}
           >
             {isPickingBase ? <X size={20} /> : <MapPinned size={20} />}
           </button>

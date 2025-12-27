@@ -70,6 +70,20 @@ class DroneServer extends EventEmitter {
           this.clients.add(ws)
           this.emit('clientConnected', this.clients.size)
 
+          // Send initial heartbeat with init flag immediately
+          this.sendToClient(ws, {
+            type: 'heartbeat',
+            payload: {
+              init: true,
+              timestamp: Date.now(),
+              basePosition: this.basePosition,
+              config: {
+                baseMoveDuration: this.baseMoveDuration,
+                heartbeatInterval: this.heartbeatInterval
+              }
+            }
+          })
+
           ws.on('message', (data: Buffer) => {
             try {
               const message: ServerMessage = JSON.parse(data.toString())

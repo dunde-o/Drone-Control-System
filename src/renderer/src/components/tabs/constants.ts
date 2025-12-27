@@ -9,6 +9,8 @@ export interface TabProps {
   // Main tab props
   baseLat: string
   baseLng: string
+  baseLatServer: string
+  baseLngServer: string
   onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
   onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBase: () => void
@@ -32,11 +34,15 @@ export interface TabProps {
   showHeartbeatLog: boolean
   onToggleHeartbeatLog: () => void
   baseMoveDuration: string
+  baseMoveDurationServer: string
   onBaseMoveDurationChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBaseMoveDuration: () => void
+  isBaseMoveDurationUpdating: boolean
   heartbeatInterval: string
+  heartbeatIntervalServer: string
   onHeartbeatIntervalChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyHeartbeatInterval: () => void
+  isHeartbeatIntervalUpdating: boolean
 }
 
 export const TABS: TabConfig[] = [

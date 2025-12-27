@@ -28,6 +28,8 @@ const App = (): React.JSX.Element => {
   const [basePosition, setBasePosition] = useState<BasePosition | null>(null)
   const [baseLatInput, setBaseLatInput] = useState('')
   const [baseLngInput, setBaseLngInput] = useState('')
+  const [baseLatServer, setBaseLatServer] = useState('')
+  const [baseLngServer, setBaseLngServer] = useState('')
   const [isPickingBase, setIsPickingBase] = useState(false)
   const [savedBaseInputs, setSavedBaseInputs] = useState({ lat: '', lng: '' })
   const [selectedMarker, setSelectedMarker] = useState<MarkerInfo | null>(null)
@@ -40,7 +42,11 @@ const App = (): React.JSX.Element => {
   const [showHeartbeatLog, setShowHeartbeatLog] = useState(false)
   const [isBaseUpdating, setIsBaseUpdating] = useState(false)
   const [baseMoveDurationInput, setBaseMoveDurationInput] = useState('')
+  const [baseMoveDurationServer, setBaseMoveDurationServer] = useState('')
   const [heartbeatIntervalInput, setHeartbeatIntervalInput] = useState('')
+  const [heartbeatIntervalServer, setHeartbeatIntervalServer] = useState('')
+  const [isBaseMoveDurationUpdating, setIsBaseMoveDurationUpdating] = useState(false)
+  const [isHeartbeatIntervalUpdating, setIsHeartbeatIntervalUpdating] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const heartbeatFailCountRef = useRef(0)
   const heartbeatTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -120,22 +126,33 @@ const App = (): React.JSX.Element => {
           heartbeatFailCountRef.current = 0
           setConnectionStatus('connected')
 
-          // Update base position from heartbeat
-          if (message.payload?.basePosition) {
-            const { lat, lng } = message.payload.basePosition
-            setBasePosition({ lat, lng })
-            setBaseLatInput(String(lat))
-            setBaseLngInput(String(lng))
-          }
-
-          // Update config from heartbeat
-          if (message.payload?.config) {
-            const { baseMoveDuration, heartbeatInterval } = message.payload.config
-            if (typeof baseMoveDuration === 'number') {
-              setBaseMoveDurationInput(String(baseMoveDuration))
+          // Only update data on init heartbeat (first message after connection)
+          if (message.payload?.init) {
+            // Update base position
+            if (message.payload?.basePosition) {
+              const { lat, lng } = message.payload.basePosition
+              const latStr = String(lat)
+              const lngStr = String(lng)
+              setBasePosition({ lat, lng })
+              setBaseLatInput(latStr)
+              setBaseLngInput(lngStr)
+              setBaseLatServer(latStr)
+              setBaseLngServer(lngStr)
             }
-            if (typeof heartbeatInterval === 'number') {
-              setHeartbeatIntervalInput(String(heartbeatInterval))
+
+            // Update config
+            if (message.payload?.config) {
+              const { baseMoveDuration, heartbeatInterval } = message.payload.config
+              if (typeof baseMoveDuration === 'number') {
+                const durationStr = String(baseMoveDuration)
+                setBaseMoveDurationInput(durationStr)
+                setBaseMoveDurationServer(durationStr)
+              }
+              if (typeof heartbeatInterval === 'number') {
+                const intervalStr = String(heartbeatInterval)
+                setHeartbeatIntervalInput(intervalStr)
+                setHeartbeatIntervalServer(intervalStr)
+              }
             }
           }
 
@@ -159,9 +176,13 @@ const App = (): React.JSX.Element => {
           // Handle base position update response
           console.info('[Client] Base position updated:', message.payload)
           const { lat, lng } = message.payload
+          const latStr = String(lat)
+          const lngStr = String(lng)
           setBasePosition({ lat, lng })
-          setBaseLatInput(String(lat))
-          setBaseLngInput(String(lng))
+          setBaseLatInput(latStr)
+          setBaseLngInput(lngStr)
+          setBaseLatServer(latStr)
+          setBaseLngServer(lngStr)
           setIsBaseUpdating(false)
         } else if (message.type === 'basePosition:moving') {
           console.info('[Client] Base position moving:', message.payload)
@@ -171,15 +192,23 @@ const App = (): React.JSX.Element => {
         } else if (message.type === 'baseMoveDuration:updated') {
           console.info('[Client] Base move duration updated:', message.payload)
           const { duration } = message.payload
-          setBaseMoveDurationInput(String(duration))
+          const durationStr = String(duration)
+          setBaseMoveDurationInput(durationStr)
+          setBaseMoveDurationServer(durationStr)
+          setIsBaseMoveDurationUpdating(false)
         } else if (message.type === 'baseMoveDuration:error') {
           console.error('[Client] Base move duration update failed:', message.payload)
+          setIsBaseMoveDurationUpdating(false)
         } else if (message.type === 'heartbeatInterval:updated') {
           console.info('[Client] Heartbeat interval updated:', message.payload)
           const { interval } = message.payload
-          setHeartbeatIntervalInput(String(interval))
+          const intervalStr = String(interval)
+          setHeartbeatIntervalInput(intervalStr)
+          setHeartbeatIntervalServer(intervalStr)
+          setIsHeartbeatIntervalUpdating(false)
         } else if (message.type === 'heartbeatInterval:error') {
           console.error('[Client] Heartbeat interval update failed:', message.payload)
+          setIsHeartbeatIntervalUpdating(false)
         } else {
           // Log non-heartbeat messages always
           console.info('[Client] Received:', message)
@@ -205,8 +234,12 @@ const App = (): React.JSX.Element => {
       setBasePosition(null)
       setBaseLatInput('')
       setBaseLngInput('')
+      setBaseLatServer('')
+      setBaseLngServer('')
       setBaseMoveDurationInput('')
+      setBaseMoveDurationServer('')
       setHeartbeatIntervalInput('')
+      setHeartbeatIntervalServer('')
     }
   }, [serverHost, serverPort])
 
@@ -282,6 +315,7 @@ const App = (): React.JSX.Element => {
     const duration = parseInt(baseMoveDurationInput, 10)
     if (isNaN(duration) || duration < 0) return
 
+    setIsBaseMoveDurationUpdating(true)
     wsRef.current.send(
       JSON.stringify({
         type: 'baseMoveDuration:update',
@@ -300,6 +334,7 @@ const App = (): React.JSX.Element => {
     const interval = parseInt(heartbeatIntervalInput, 10)
     if (isNaN(interval) || interval < 1000) return
 
+    setIsHeartbeatIntervalUpdating(true)
     wsRef.current.send(
       JSON.stringify({
         type: 'heartbeatInterval:update',
@@ -421,6 +456,8 @@ const App = (): React.JSX.Element => {
           tabProps={{
             baseLat: baseLatInput,
             baseLng: baseLngInput,
+            baseLatServer,
+            baseLngServer,
             onBaseLatChange: handleChangeBaseLatInput,
             onBaseLngChange: handleChangeBaseLngInput,
             onApplyBase: handleApplyBase,
@@ -442,11 +479,15 @@ const App = (): React.JSX.Element => {
             showHeartbeatLog,
             onToggleHeartbeatLog: () => setShowHeartbeatLog((prev) => !prev),
             baseMoveDuration: baseMoveDurationInput,
+            baseMoveDurationServer,
             onBaseMoveDurationChange: handleChangeBaseMoveDurationInput,
             onApplyBaseMoveDuration: handleApplyBaseMoveDuration,
+            isBaseMoveDurationUpdating,
             heartbeatInterval: heartbeatIntervalInput,
+            heartbeatIntervalServer,
             onHeartbeatIntervalChange: handleChangeHeartbeatIntervalInput,
-            onApplyHeartbeatInterval: handleApplyHeartbeatInterval
+            onApplyHeartbeatInterval: handleApplyHeartbeatInterval,
+            isHeartbeatIntervalUpdating
           }}
         />
       </Drawer>

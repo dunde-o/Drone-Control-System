@@ -1,5 +1,7 @@
 import { ChangeEvent } from 'react'
 
+import { Loader2 } from 'lucide-react'
+
 import styles from './styles.module.scss'
 
 interface ServerSettingsTabProps {
@@ -14,11 +16,15 @@ interface ServerSettingsTabProps {
   showHeartbeatLog: boolean
   onToggleHeartbeatLog: () => void
   baseMoveDuration: string
+  baseMoveDurationServer: string
   onBaseMoveDurationChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBaseMoveDuration: () => void
+  isBaseMoveDurationUpdating: boolean
   heartbeatInterval: string
+  heartbeatIntervalServer: string
   onHeartbeatIntervalChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyHeartbeatInterval: () => void
+  isHeartbeatIntervalUpdating: boolean
 }
 
 const ServerSettingsTab = ({
@@ -33,11 +39,15 @@ const ServerSettingsTab = ({
   showHeartbeatLog,
   onToggleHeartbeatLog,
   baseMoveDuration,
+  baseMoveDurationServer,
   onBaseMoveDurationChange,
   onApplyBaseMoveDuration,
+  isBaseMoveDurationUpdating,
   heartbeatInterval,
+  heartbeatIntervalServer,
   onHeartbeatIntervalChange,
-  onApplyHeartbeatInterval
+  onApplyHeartbeatInterval,
+  isHeartbeatIntervalUpdating
 }: ServerSettingsTabProps): React.JSX.Element => {
   const isConnected = connectionStatus === 'connected'
   const getConnectionStatusText = (): string => {
@@ -127,15 +137,24 @@ const ServerSettingsTab = ({
               className={styles.durationInput}
               min="0"
               step="100"
-              disabled={!isConnected}
+              disabled={!isConnected || isBaseMoveDurationUpdating}
               placeholder="-"
             />
             <button
               onClick={onApplyBaseMoveDuration}
               className={styles.applyButton}
-              disabled={!isConnected || !baseMoveDuration}
+              disabled={
+                !isConnected ||
+                !baseMoveDuration ||
+                isBaseMoveDurationUpdating ||
+                baseMoveDuration === baseMoveDurationServer
+              }
             >
-              적용
+              {isBaseMoveDurationUpdating ? (
+                <Loader2 size={14} className={styles.spinner} />
+              ) : (
+                '적용'
+              )}
             </button>
           </div>
         </div>
@@ -149,15 +168,24 @@ const ServerSettingsTab = ({
               className={styles.durationInput}
               min="1000"
               step="500"
-              disabled={!isConnected}
+              disabled={!isConnected || isHeartbeatIntervalUpdating}
               placeholder="-"
             />
             <button
               onClick={onApplyHeartbeatInterval}
               className={styles.applyButton}
-              disabled={!isConnected || !heartbeatInterval}
+              disabled={
+                !isConnected ||
+                !heartbeatInterval ||
+                isHeartbeatIntervalUpdating ||
+                heartbeatInterval === heartbeatIntervalServer
+              }
             >
-              적용
+              {isHeartbeatIntervalUpdating ? (
+                <Loader2 size={14} className={styles.spinner} />
+              ) : (
+                '적용'
+              )}
             </button>
           </div>
         </div>

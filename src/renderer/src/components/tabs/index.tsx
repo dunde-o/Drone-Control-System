@@ -15,6 +15,8 @@ const TabContent = ({ activeTabId, tabProps }: TabContentProps): React.JSX.Eleme
       <MainTab
         baseLat={tabProps.baseLat}
         baseLng={tabProps.baseLng}
+        baseLatServer={tabProps.baseLatServer}
+        baseLngServer={tabProps.baseLngServer}
         onBaseLatChange={tabProps.onBaseLatChange}
         onBaseLngChange={tabProps.onBaseLngChange}
         onApplyBase={tabProps.onApplyBase}
@@ -37,11 +39,15 @@ const TabContent = ({ activeTabId, tabProps }: TabContentProps): React.JSX.Eleme
         showHeartbeatLog={tabProps.showHeartbeatLog}
         onToggleHeartbeatLog={tabProps.onToggleHeartbeatLog}
         baseMoveDuration={tabProps.baseMoveDuration}
+        baseMoveDurationServer={tabProps.baseMoveDurationServer}
         onBaseMoveDurationChange={tabProps.onBaseMoveDurationChange}
         onApplyBaseMoveDuration={tabProps.onApplyBaseMoveDuration}
+        isBaseMoveDurationUpdating={tabProps.isBaseMoveDurationUpdating}
         heartbeatInterval={tabProps.heartbeatInterval}
+        heartbeatIntervalServer={tabProps.heartbeatIntervalServer}
         onHeartbeatIntervalChange={tabProps.onHeartbeatIntervalChange}
         onApplyHeartbeatInterval={tabProps.onApplyHeartbeatInterval}
+        isHeartbeatIntervalUpdating={tabProps.isHeartbeatIntervalUpdating}
       />
     ),
     api: (

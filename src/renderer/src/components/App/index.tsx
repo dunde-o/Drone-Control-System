@@ -10,33 +10,45 @@ import { TABS } from '../tabs/constants'
 
 import {
   DEFAULT_API_KEY,
-  DEFAULT_BASE_POSITION,
+  DEFAULT_MAP_CENTER,
   DEFAULT_SERVER_HOST,
   DEFAULT_SERVER_PORT
 } from './constants'
+
+interface BasePosition {
+  lat: number
+  lng: number
+}
 
 const App = (): React.JSX.Element => {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('main')
   const [apiKey, setApiKey] = useState(DEFAULT_API_KEY)
   const [apiKeyInput, setApiKeyInput] = useState(DEFAULT_API_KEY)
-  const [basePosition, setBasePosition] = useState(DEFAULT_BASE_POSITION)
-  const [baseLatInput, setBaseLatInput] = useState(String(DEFAULT_BASE_POSITION.lat))
-  const [baseLngInput, setBaseLngInput] = useState(String(DEFAULT_BASE_POSITION.lng))
+  const [basePosition, setBasePosition] = useState<BasePosition | null>(null)
+  const [baseLatInput, setBaseLatInput] = useState('')
+  const [baseLngInput, setBaseLngInput] = useState('')
   const [isPickingBase, setIsPickingBase] = useState(false)
   const [savedBaseInputs, setSavedBaseInputs] = useState({ lat: '', lng: '' })
   const [selectedMarker, setSelectedMarker] = useState<MarkerInfo | null>(null)
   const [serverHost, setServerHost] = useState(DEFAULT_SERVER_HOST)
   const [serverPort, setServerPort] = useState(DEFAULT_SERVER_PORT)
   const [isServerRunning, setIsServerRunning] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connected' | 'connecting'>('disconnected')
+  const [connectionStatus, setConnectionStatus] = useState<
+    'disconnected' | 'connected' | 'connecting'
+  >('disconnected')
   const [showHeartbeatLog, setShowHeartbeatLog] = useState(false)
+  const [isBaseUpdating, setIsBaseUpdating] = useState(false)
+  const [baseMoveDurationInput, setBaseMoveDurationInput] = useState('')
+  const [heartbeatIntervalInput, setHeartbeatIntervalInput] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
   const heartbeatFailCountRef = useRef(0)
   const heartbeatTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const showHeartbeatLogRef = useRef(showHeartbeatLog)
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
+
+  const isBaseEnabled = connectionStatus === 'connected'
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -108,6 +120,25 @@ const App = (): React.JSX.Element => {
           heartbeatFailCountRef.current = 0
           setConnectionStatus('connected')
 
+          // Update base position from heartbeat
+          if (message.payload?.basePosition) {
+            const { lat, lng } = message.payload.basePosition
+            setBasePosition({ lat, lng })
+            setBaseLatInput(String(lat))
+            setBaseLngInput(String(lng))
+          }
+
+          // Update config from heartbeat
+          if (message.payload?.config) {
+            const { baseMoveDuration, heartbeatInterval } = message.payload.config
+            if (typeof baseMoveDuration === 'number') {
+              setBaseMoveDurationInput(String(baseMoveDuration))
+            }
+            if (typeof heartbeatInterval === 'number') {
+              setHeartbeatIntervalInput(String(heartbeatInterval))
+            }
+          }
+
           // Clear previous timeout
           if (heartbeatTimeoutRef.current) {
             clearTimeout(heartbeatTimeoutRef.current)
@@ -124,6 +155,31 @@ const App = (): React.JSX.Element => {
               ws.close()
             }
           }, 5000)
+        } else if (message.type === 'basePosition:updated') {
+          // Handle base position update response
+          console.info('[Client] Base position updated:', message.payload)
+          const { lat, lng } = message.payload
+          setBasePosition({ lat, lng })
+          setBaseLatInput(String(lat))
+          setBaseLngInput(String(lng))
+          setIsBaseUpdating(false)
+        } else if (message.type === 'basePosition:moving') {
+          console.info('[Client] Base position moving:', message.payload)
+        } else if (message.type === 'basePosition:error') {
+          console.error('[Client] Base position update failed:', message.payload)
+          setIsBaseUpdating(false)
+        } else if (message.type === 'baseMoveDuration:updated') {
+          console.info('[Client] Base move duration updated:', message.payload)
+          const { duration } = message.payload
+          setBaseMoveDurationInput(String(duration))
+        } else if (message.type === 'baseMoveDuration:error') {
+          console.error('[Client] Base move duration update failed:', message.payload)
+        } else if (message.type === 'heartbeatInterval:updated') {
+          console.info('[Client] Heartbeat interval updated:', message.payload)
+          const { interval } = message.payload
+          setHeartbeatIntervalInput(String(interval))
+        } else if (message.type === 'heartbeatInterval:error') {
+          console.error('[Client] Heartbeat interval update failed:', message.payload)
         } else {
           // Log non-heartbeat messages always
           console.info('[Client] Received:', message)
@@ -145,6 +201,12 @@ const App = (): React.JSX.Element => {
         clearTimeout(heartbeatTimeoutRef.current)
         heartbeatTimeoutRef.current = null
       }
+      // Clear all server values when disconnected
+      setBasePosition(null)
+      setBaseLatInput('')
+      setBaseLngInput('')
+      setBaseMoveDurationInput('')
+      setHeartbeatIntervalInput('')
     }
   }, [serverHost, serverPort])
 
@@ -195,11 +257,55 @@ const App = (): React.JSX.Element => {
   }
 
   const handleApplyBase = (): void => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+
     const lat = parseFloat(baseLatInput)
     const lng = parseFloat(baseLngInput)
-    if (!isNaN(lat) && !isNaN(lng)) {
-      setBasePosition({ lat, lng })
-    }
+    if (isNaN(lat) || isNaN(lng)) return
+
+    setIsBaseUpdating(true)
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'basePosition:update',
+        payload: { lat, lng }
+      })
+    )
+  }
+
+  const handleChangeBaseMoveDurationInput = (e: ChangeEvent<HTMLInputElement>): void => {
+    setBaseMoveDurationInput(e.target.value)
+  }
+
+  const handleApplyBaseMoveDuration = (): void => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+
+    const duration = parseInt(baseMoveDurationInput, 10)
+    if (isNaN(duration) || duration < 0) return
+
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'baseMoveDuration:update',
+        payload: { duration }
+      })
+    )
+  }
+
+  const handleChangeHeartbeatIntervalInput = (e: ChangeEvent<HTMLInputElement>): void => {
+    setHeartbeatIntervalInput(e.target.value)
+  }
+
+  const handleApplyHeartbeatInterval = (): void => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+
+    const interval = parseInt(heartbeatIntervalInput, 10)
+    if (isNaN(interval) || interval < 1000) return
+
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'heartbeatInterval:update',
+        payload: { interval }
+      })
+    )
   }
 
   const handleTogglePickBase = (): void => {
@@ -231,6 +337,7 @@ const App = (): React.JSX.Element => {
   )
 
   const handleBaseMarkerClick = useCallback((): void => {
+    if (!basePosition) return
     setSelectedMarker({
       id: 'base',
       type: 'base',
@@ -283,7 +390,7 @@ const App = (): React.JSX.Element => {
     <APIProvider apiKey={apiKey}>
       <Map
         style={{ width: '100%', height: '100%' }}
-        defaultCenter={DEFAULT_BASE_POSITION}
+        defaultCenter={DEFAULT_MAP_CENTER}
         defaultZoom={12}
         gestureHandling="greedy"
         disableDefaultUI
@@ -292,11 +399,13 @@ const App = (): React.JSX.Element => {
         onClick={handleMapClick}
         onMousemove={handleMapMouseMove}
       >
-        <BaseMarker
-          position={basePosition}
-          isSelected={selectedMarker?.id === 'base'}
-          onClick={handleBaseMarkerClick}
-        />
+        {basePosition && (
+          <BaseMarker
+            position={basePosition}
+            isSelected={selectedMarker?.id === 'base'}
+            onClick={handleBaseMarkerClick}
+          />
+        )}
       </Map>
 
       <MarkerInfoDrawer marker={selectedMarker} onClose={handleCloseMarkerInfo} />
@@ -312,13 +421,13 @@ const App = (): React.JSX.Element => {
           tabProps={{
             baseLat: baseLatInput,
             baseLng: baseLngInput,
-            currentBaseLat: basePosition.lat,
-            currentBaseLng: basePosition.lng,
             onBaseLatChange: handleChangeBaseLatInput,
             onBaseLngChange: handleChangeBaseLngInput,
             onApplyBase: handleApplyBase,
             isPickingBase,
             onTogglePickBase: handleTogglePickBase,
+            isBaseEnabled,
+            isBaseUpdating,
             apiKeyInput,
             onApiKeyInputChange: handleChangeApiKeyInput,
             onApplyApiKey: handleApplyApiKey,
@@ -331,7 +440,13 @@ const App = (): React.JSX.Element => {
             onStartServer: handleStartServer,
             onStopServer: handleStopServer,
             showHeartbeatLog,
-            onToggleHeartbeatLog: () => setShowHeartbeatLog((prev) => !prev)
+            onToggleHeartbeatLog: () => setShowHeartbeatLog((prev) => !prev),
+            baseMoveDuration: baseMoveDurationInput,
+            onBaseMoveDurationChange: handleChangeBaseMoveDurationInput,
+            onApplyBaseMoveDuration: handleApplyBaseMoveDuration,
+            heartbeatInterval: heartbeatIntervalInput,
+            onHeartbeatIntervalChange: handleChangeHeartbeatIntervalInput,
+            onApplyHeartbeatInterval: handleApplyHeartbeatInterval
           }}
         />
       </Drawer>

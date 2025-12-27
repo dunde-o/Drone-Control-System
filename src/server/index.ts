@@ -4,6 +4,12 @@ import { EventEmitter } from 'events'
 export interface ServerConfig {
   host: string
   port: number
+  basePosition?: {
+    lat: number
+    lng: number
+  }
+  baseMoveDuration?: number
+  heartbeatInterval?: number
 }
 
 export interface ServerMessage {
@@ -11,17 +17,30 @@ export interface ServerMessage {
   payload?: unknown
 }
 
-const HEARTBEAT_INTERVAL = 3000 // 3 seconds
+export interface BasePosition {
+  lat: number
+  lng: number
+}
+
+const DEFAULT_HEARTBEAT_INTERVAL = 3000 // 3 seconds
+const DEFAULT_BASE_MOVE_DURATION = 1000 // 1 second
 
 class DroneServer extends EventEmitter {
   private wss: WebSocketServer | null = null
   private config: ServerConfig
   private clients: Set<WebSocket> = new Set()
-  private heartbeatInterval: NodeJS.Timeout | null = null
+  private heartbeatTimer: NodeJS.Timeout | null = null
+  private basePosition: BasePosition
+  private baseMoveDuration: number
+  private heartbeatInterval: number
+  private baseMoveTimeout: NodeJS.Timeout | null = null
 
   constructor(config: ServerConfig) {
     super()
     this.config = config
+    this.basePosition = config.basePosition || { lat: 0, lng: 0 }
+    this.baseMoveDuration = config.baseMoveDuration ?? DEFAULT_BASE_MOVE_DURATION
+    this.heartbeatInterval = config.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL
   }
 
   start(): Promise<void> {
@@ -108,18 +127,30 @@ class DroneServer extends EventEmitter {
   }
 
   private startHeartbeat(): void {
-    this.heartbeatInterval = setInterval(() => {
+    this.heartbeatTimer = setInterval(() => {
       this.broadcast({
         type: 'heartbeat',
-        payload: { timestamp: Date.now() }
+        payload: {
+          timestamp: Date.now(),
+          basePosition: this.basePosition,
+          config: {
+            baseMoveDuration: this.baseMoveDuration,
+            heartbeatInterval: this.heartbeatInterval
+          }
+        }
       })
-    }, HEARTBEAT_INTERVAL)
+    }, this.heartbeatInterval)
+  }
+
+  private restartHeartbeat(): void {
+    this.stopHeartbeat()
+    this.startHeartbeat()
   }
 
   private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval)
-      this.heartbeatInterval = null
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = null
     }
   }
 
@@ -133,6 +164,89 @@ class DroneServer extends EventEmitter {
           payload: { status: 'ok', timestamp: Date.now() }
         })
         break
+
+      case 'basePosition:update': {
+        const payload = message.payload as { lat?: number; lng?: number } | undefined
+        if (payload && typeof payload.lat === 'number' && typeof payload.lng === 'number') {
+          // Cancel any pending move
+          if (this.baseMoveTimeout) {
+            clearTimeout(this.baseMoveTimeout)
+          }
+
+          const targetPosition = { lat: payload.lat, lng: payload.lng }
+          console.log(
+            `[Server] Base position moving to:`,
+            targetPosition,
+            `(duration: ${this.baseMoveDuration}ms)`
+          )
+
+          // Broadcast that move started
+          this.broadcast({
+            type: 'basePosition:moving',
+            payload: { target: targetPosition, duration: this.baseMoveDuration }
+          })
+
+          // Update position after duration
+          this.baseMoveTimeout = setTimeout(() => {
+            this.basePosition = targetPosition
+            console.log('[Server] Base position updated:', this.basePosition)
+
+            // Broadcast the update to all clients
+            this.broadcast({
+              type: 'basePosition:updated',
+              payload: this.basePosition
+            })
+            this.baseMoveTimeout = null
+          }, this.baseMoveDuration)
+        } else {
+          this.sendToClient(ws, {
+            type: 'basePosition:error',
+            payload: { error: 'Invalid lat/lng values' }
+          })
+        }
+        break
+      }
+
+      case 'baseMoveDuration:update': {
+        const payload = message.payload as { duration?: number } | undefined
+        if (payload && typeof payload.duration === 'number' && payload.duration >= 0) {
+          this.baseMoveDuration = payload.duration
+          console.log('[Server] Base move duration updated:', this.baseMoveDuration)
+
+          this.broadcast({
+            type: 'baseMoveDuration:updated',
+            payload: { duration: this.baseMoveDuration }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'baseMoveDuration:error',
+            payload: { error: 'Invalid duration value' }
+          })
+        }
+        break
+      }
+
+      case 'heartbeatInterval:update': {
+        const payload = message.payload as { interval?: number } | undefined
+        if (payload && typeof payload.interval === 'number' && payload.interval >= 1000) {
+          this.heartbeatInterval = payload.interval
+          console.log('[Server] Heartbeat interval updated:', this.heartbeatInterval)
+
+          // Restart heartbeat with new interval
+          this.restartHeartbeat()
+
+          this.broadcast({
+            type: 'heartbeatInterval:updated',
+            payload: { interval: this.heartbeatInterval }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'heartbeatInterval:error',
+            payload: { error: 'Invalid interval value (minimum 1000ms)' }
+          })
+        }
+        break
+      }
 
       case 'config:update':
         this.emit('configUpdate', message.payload)
@@ -172,6 +286,14 @@ class DroneServer extends EventEmitter {
 
   getClientCount(): number {
     return this.clients.size
+  }
+
+  getBasePosition(): BasePosition {
+    return this.basePosition
+  }
+
+  getBaseMoveDuration(): number {
+    return this.baseMoveDuration
   }
 }
 

@@ -1,40 +1,43 @@
 import { ChangeEvent } from 'react'
 
-import { MapPinned, X } from 'lucide-react'
+import { Loader2, MapPinned, X } from 'lucide-react'
 
 import styles from './styles.module.scss'
 
 interface MainTabProps {
   baseLat: string
   baseLng: string
-  currentBaseLat: number
-  currentBaseLng: number
   onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
   onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBase: () => void
   isPickingBase: boolean
   onTogglePickBase: () => void
+  isBaseEnabled: boolean
+  isBaseUpdating: boolean
 }
 
 const MainTab = ({
   baseLat,
   baseLng,
-  currentBaseLat,
-  currentBaseLng,
   onBaseLatChange,
   onBaseLngChange,
   onApplyBase,
   isPickingBase,
-  onTogglePickBase
+  onTogglePickBase,
+  isBaseEnabled,
+  isBaseUpdating
 }: MainTabProps): React.JSX.Element => {
-  const isInputChanged =
-    parseFloat(baseLat) !== currentBaseLat || parseFloat(baseLng) !== currentBaseLng
+  const isDisabled = !isBaseEnabled || isBaseUpdating
+
   return (
     <div className={styles.container}>
       <h2>MAIN</h2>
 
       <div className={styles.section}>
         <h3>Base 위치 설정</h3>
+        {!isBaseEnabled && (
+          <p className={styles.disabledHint}>서버가 연결되어야 Base 위치를 설정할 수 있습니다</p>
+        )}
         <div className={styles.coordGroup}>
           <div className={styles.coordInput}>
             <label className={styles.label}>위도 (Latitude)</label>
@@ -43,8 +46,9 @@ const MainTab = ({
               step="any"
               value={baseLat}
               onChange={onBaseLatChange}
-              placeholder="37.5665"
+              placeholder={isBaseEnabled ? '37.5665' : '-'}
               className={styles.input}
+              disabled={isDisabled}
             />
           </div>
           <div className={styles.coordInput}>
@@ -54,19 +58,28 @@ const MainTab = ({
               step="any"
               value={baseLng}
               onChange={onBaseLngChange}
-              placeholder="126.978"
+              placeholder={isBaseEnabled ? '126.978' : '-'}
               className={styles.input}
+              disabled={isDisabled}
             />
           </div>
         </div>
         <div className={styles.buttonGroup}>
-          <button onClick={onApplyBase} className={styles.button} disabled={!isInputChanged}>
-            Base 위치 적용
+          <button onClick={onApplyBase} className={styles.button} disabled={isDisabled}>
+            {isBaseUpdating ? (
+              <>
+                <Loader2 size={16} className={styles.spinner} />
+                적용 중...
+              </>
+            ) : (
+              'Base 위치 적용'
+            )}
           </button>
           <button
             onClick={onTogglePickBase}
             className={`${styles.pickButton} ${isPickingBase ? styles.active : ''}`}
             title={isPickingBase ? '선택 취소' : '지도에서 선택'}
+            disabled={isDisabled}
           >
             {isPickingBase ? <X size={20} /> : <MapPinned size={20} />}
           </button>

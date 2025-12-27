@@ -139,3 +139,31 @@
     border-radius: 50%;
   }
 }
+
+.durationRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: vars.$spacing-sm 0;
+  border-top: 1px solid vars.$color-border;
+  margin-top: vars.$spacing-sm;
+}
+
+.durationInputGroup {
+  display: flex;
+  gap: vars.$spacing-xs;
+  align-items: center;
+}
+
+.durationInput {
+  @include input-field;
+  width: 80px;
+  text-align: center;
+  padding: vars.$spacing-xs vars.$spacing-sm;
+}
+
+.applyButton {
+  @include button-primary;
+  padding: vars.$spacing-xs vars.$spacing-md;
+  font-size: vars.$font-size-sm;
+}

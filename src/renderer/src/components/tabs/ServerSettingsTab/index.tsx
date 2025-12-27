@@ -13,6 +13,12 @@ interface ServerSettingsTabProps {
   onStopServer: () => void
   showHeartbeatLog: boolean
   onToggleHeartbeatLog: () => void
+  baseMoveDuration: string
+  onBaseMoveDurationChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onApplyBaseMoveDuration: () => void
+  heartbeatInterval: string
+  onHeartbeatIntervalChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onApplyHeartbeatInterval: () => void
 }
 
 const ServerSettingsTab = ({
@@ -25,8 +31,15 @@ const ServerSettingsTab = ({
   onStartServer,
   onStopServer,
   showHeartbeatLog,
-  onToggleHeartbeatLog
+  onToggleHeartbeatLog,
+  baseMoveDuration,
+  onBaseMoveDurationChange,
+  onApplyBaseMoveDuration,
+  heartbeatInterval,
+  onHeartbeatIntervalChange,
+  onApplyHeartbeatInterval
 }: ServerSettingsTabProps): React.JSX.Element => {
+  const isConnected = connectionStatus === 'connected'
   const getConnectionStatusText = (): string => {
     switch (connectionStatus) {
       case 'connecting':
@@ -100,13 +113,53 @@ const ServerSettingsTab = ({
         <div className={styles.statusRow}>
           <span className={styles.statusLabel}>Heartbeat Log:</span>
           <label className={styles.switch}>
-            <input
-              type="checkbox"
-              checked={showHeartbeatLog}
-              onChange={onToggleHeartbeatLog}
-            />
+            <input type="checkbox" checked={showHeartbeatLog} onChange={onToggleHeartbeatLog} />
             <span className={styles.slider} />
           </label>
+        </div>
+        <div className={styles.durationRow}>
+          <label className={styles.statusLabel}>Base 이동 시간 (ms):</label>
+          <div className={styles.durationInputGroup}>
+            <input
+              type="number"
+              value={baseMoveDuration}
+              onChange={onBaseMoveDurationChange}
+              className={styles.durationInput}
+              min="0"
+              step="100"
+              disabled={!isConnected}
+              placeholder="-"
+            />
+            <button
+              onClick={onApplyBaseMoveDuration}
+              className={styles.applyButton}
+              disabled={!isConnected || !baseMoveDuration}
+            >
+              적용
+            </button>
+          </div>
+        </div>
+        <div className={styles.durationRow}>
+          <label className={styles.statusLabel}>Heartbeat 주기 (ms):</label>
+          <div className={styles.durationInputGroup}>
+            <input
+              type="number"
+              value={heartbeatInterval}
+              onChange={onHeartbeatIntervalChange}
+              className={styles.durationInput}
+              min="1000"
+              step="500"
+              disabled={!isConnected}
+              placeholder="-"
+            />
+            <button
+              onClick={onApplyHeartbeatInterval}
+              className={styles.applyButton}
+              disabled={!isConnected || !heartbeatInterval}
+            >
+              적용
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -3,9 +3,19 @@ import { join } from 'path'
 import { electronApp, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import DroneServer from '../server'
+import * as dotenv from 'dotenv'
+
+// Load .env file
+dotenv.config()
 
 let mainWindow: BrowserWindow | null = null
 let droneServer: DroneServer | null = null
+
+// Default base position from environment variables
+const DEFAULT_BASE_POSITION = {
+  lat: parseFloat(process.env.BASE_POSITION_LAT || '0'),
+  lng: parseFloat(process.env.BASE_POSITION_LNG || '0')
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -71,7 +81,10 @@ app.whenReady().then(() => {
         await droneServer.stop()
       }
 
-      droneServer = new DroneServer(config)
+      droneServer = new DroneServer({
+        ...config,
+        basePosition: DEFAULT_BASE_POSITION
+      })
 
       droneServer.on('clientConnected', (count) => {
         mainWindow?.webContents.send('server:client-count', count)

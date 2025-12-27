@@ -38,6 +38,30 @@
 .button {
   @include button-primary;
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: vars.$spacing-xs;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.disabledHint {
+  color: vars.$color-warning;
+  font-size: vars.$font-size-sm;
+  margin-bottom: vars.$spacing-md;
 }
 
 .pickButton {
@@ -54,14 +78,19 @@
   cursor: pointer;
   transition: background-color 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: vars.$color-text-secondary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   &.active {
     background-color: #e74c3c;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background-color: #c0392b;
     }
   }

@@ -21,10 +21,13 @@ export interface ServerMessage {
   payload?: unknown
 }
 
-export interface BasePosition {
+export interface Position {
   lat: number
   lng: number
 }
+
+// Alias for backward compatibility
+export type BasePosition = Position
 
 export type DroneStatus =
   | 'idle' // 대기 - 베이스에서 시작 가능
@@ -40,13 +43,11 @@ export type DroneStatus =
 export interface Drone {
   id: string
   name: string
-  position: {
-    lat: number
-    lng: number
-  }
+  position: Position
   altitude: number // 고도 (m)
   status: DroneStatus
   battery: number
+  waypoints: Position[] // 목표 지점 리스트
 }
 
 const DEFAULT_HEARTBEAT_INTERVAL = 3000 // 3 seconds
@@ -254,6 +255,12 @@ class DroneServer extends EventEmitter {
           }
           break
 
+        case 'moving':
+        case 'returning':
+        case 'returning_auto':
+          this.simulateDroneMovement(drone, deltaTime)
+          break
+
         case 'landing':
         case 'landing_auto':
           // 착륙 시 고도 하강
@@ -263,11 +270,66 @@ class DroneServer extends EventEmitter {
           if (drone.altitude <= 0) {
             drone.altitude = 0
             drone.status = 'idle'
+            drone.waypoints = []
             console.log(`[Server] Drone ${drone.id} landed, now idle`)
           }
           break
       }
     })
+  }
+
+  // 두 좌표 사이의 거리 계산 (Haversine formula, 미터 단위)
+  private calculateDistance(from: Position, to: Position): number {
+    const R = 6371000 // 지구 반지름 (미터)
+    const dLat = ((to.lat - from.lat) * Math.PI) / 180
+    const dLng = ((to.lng - from.lng) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((from.lat * Math.PI) / 180) *
+        Math.cos((to.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  // 드론 이동 시뮬레이션
+  private simulateDroneMovement(drone: Drone, deltaTime: number): void {
+    if (drone.waypoints.length === 0) {
+      // 목표 지점이 없으면 hovering으로 전환
+      drone.status = 'hovering'
+      console.log(`[Server] Drone ${drone.id} has no waypoints, now hovering`)
+      return
+    }
+
+    const target = drone.waypoints[0]
+    const distance = this.calculateDistance(drone.position, target)
+    const moveDistance = this.droneFlySpeed * deltaTime
+
+    if (distance <= moveDistance) {
+      // 목표 지점에 도달
+      drone.position = { ...target }
+      drone.waypoints.shift() // 첫 번째 waypoint 제거
+
+      if (drone.waypoints.length === 0) {
+        drone.status = 'hovering'
+        console.log(`[Server] Drone ${drone.id} reached final waypoint, now hovering`)
+      } else {
+        console.log(
+          `[Server] Drone ${drone.id} reached waypoint, ${drone.waypoints.length} remaining`
+        )
+      }
+    } else {
+      // 목표 지점으로 이동
+      const ratio = moveDistance / distance
+      const dLat = target.lat - drone.position.lat
+      const dLng = target.lng - drone.position.lng
+
+      drone.position = {
+        lat: drone.position.lat + dLat * ratio,
+        lng: drone.position.lng + dLng * ratio
+      }
+    }
   }
 
   private restartDroneUpdates(): void {
@@ -439,6 +501,44 @@ class DroneServer extends EventEmitter {
         break
       }
 
+      case 'drone:move': {
+        const payload = message.payload as
+          | {
+              droneId?: string
+              waypoints?: Position[]
+              append?: boolean // true면 기존 waypoints에 추가 (Shift+우클릭)
+            }
+          | undefined
+
+        if (payload && payload.droneId && Array.isArray(payload.waypoints)) {
+          const drone = this.drones.get(payload.droneId)
+          if (drone && (drone.status === 'hovering' || drone.status === 'moving')) {
+            if (payload.append) {
+              // Shift+우클릭: 기존 경로에 추가
+              drone.waypoints.push(...payload.waypoints)
+            } else {
+              // 일반 우클릭: 기존 경로 덮어쓰기
+              drone.waypoints = [...payload.waypoints]
+            }
+            drone.status = 'moving'
+            console.log(
+              `[Server] Drone ${drone.id} moving to ${drone.waypoints.length} waypoint(s)`
+            )
+
+            this.broadcast({
+              type: 'drone:updated',
+              payload: { drone }
+            })
+          } else {
+            this.sendToClient(ws, {
+              type: 'drone:error',
+              payload: { error: 'Drone not found or not in hovering/moving state' }
+            })
+          }
+        }
+        break
+      }
+
       case 'droneVerticalSpeed:update': {
         const payload = message.payload as { speed?: number } | undefined
         if (payload && typeof payload.speed === 'number' && payload.speed > 0) {
@@ -564,7 +664,8 @@ class DroneServer extends EventEmitter {
       },
       altitude: 0,
       status: 'idle',
-      battery: 100
+      battery: 100,
+      waypoints: []
     }
   }
 

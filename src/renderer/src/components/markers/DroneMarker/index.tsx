@@ -29,7 +29,7 @@ const DroneMarker = ({
 
   return (
     <AdvancedMarker position={drone.position} title={drone.name}>
-      <div className={styles.wrapper}>
+      <div className={`${styles.wrapper} map-marker`}>
         {isSelected && <span className={styles.pulse} />}
         <div
           className={`${styles.marker} ${isSelected ? styles.selected : ''}`}

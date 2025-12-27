@@ -65,3 +65,18 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* 드론 선택 시 맵 커서 변경 */
+body.drone-selected .gm-style {
+  cursor: crosshair !important;
+}
+
+body.drone-selected .gm-style > div {
+  cursor: crosshair !important;
+}
+
+/* 마커에 호버 시 포인터 커서 유지 */
+body.drone-selected .map-marker,
+body.drone-selected .map-marker * {
+  cursor: pointer !important;
+}

@@ -1,9 +1,12 @@
 export type ConnectionStatus = 'disconnected' | 'connected' | 'connecting'
 
-export interface BasePosition {
+export interface Position {
   lat: number
   lng: number
 }
+
+// Alias for backward compatibility
+export type BasePosition = Position
 
 export type DroneStatus =
   | 'idle' // 대기 - 베이스에서 시작 가능
@@ -19,13 +22,11 @@ export type DroneStatus =
 export interface Drone {
   id: string
   name: string
-  position: {
-    lat: number
-    lng: number
-  }
+  position: Position
   altitude: number // 고도 (m)
   status: DroneStatus
   battery: number
+  waypoints: Position[] // 목표 지점 리스트
 }
 
 export interface ServerConfig {
@@ -73,6 +74,7 @@ export type WebSocketOutgoingMessageType =
   | 'baseAltitude:update'
   | 'drone:start'
   | 'drone:stop'
+  | 'drone:move'
 
 export interface HeartbeatPayload {
   init?: boolean

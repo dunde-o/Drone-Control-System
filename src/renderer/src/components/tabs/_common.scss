@@ -1,0 +1,42 @@
+@use '../../styles/variables' as vars;
+@use '../../styles/mixins' as *;
+
+// 탭 공통 컨테이너 스타일
+%tabContainer {
+  h2 {
+    @include menu-text;
+    margin: 0;
+    margin-bottom: vars.$spacing-xl;
+    color: vars.$color-text-primary;
+  }
+
+  h3 {
+    @include menu-text;
+    margin: 0;
+    margin-bottom: vars.$spacing-md;
+    color: vars.$color-text-muted;
+    font-size: vars.$font-size-md;
+  }
+
+  p {
+    @include menu-text;
+    color: vars.$color-text-secondary;
+  }
+}
+
+// 힌트 텍스트 스타일
+%hintText {
+  @include menu-text;
+  font-size: vars.$font-size-xs;
+  color: vars.$color-text-hint;
+}
+
+// 라벨 스타일
+%labelText {
+  @include menu-text;
+  display: block;
+  margin-bottom: vars.$spacing-sm;
+  color: vars.$color-text-muted;
+  font-size: vars.$font-size-sm;
+  font-weight: 500;
+}

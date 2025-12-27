@@ -1,0 +1,41 @@
+@use '../../../styles/variables' as vars;
+@use '../../../styles/mixins' as *;
+@use '../common' as *;
+
+.container {
+  @extend %tabContainer;
+}
+
+.section {
+  margin-bottom: vars.$spacing-xxl;
+}
+
+.label {
+  @extend %labelText;
+}
+
+.coordGroup {
+  display: flex;
+  gap: vars.$spacing-md;
+  margin-bottom: vars.$spacing-md;
+}
+
+.coordInput {
+  flex: 1;
+}
+
+.input {
+  @include input-field;
+  width: 100%;
+}
+
+.button {
+  @include button-primary;
+  width: 100%;
+  margin-bottom: vars.$spacing-sm;
+}
+
+.hint {
+  @extend %hintText;
+  margin: 0;
+}

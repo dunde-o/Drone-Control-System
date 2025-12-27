@@ -1,0 +1,60 @@
+@use '../../../styles/variables' as vars;
+@use '../../../styles/mixins' as *;
+@use '../common' as *;
+
+.container {
+  @extend %tabContainer;
+}
+
+.section {
+  margin-bottom: vars.$spacing-xxl;
+}
+
+.label {
+  @extend %labelText;
+}
+
+.inputGroup {
+  display: flex;
+  gap: vars.$spacing-sm;
+}
+
+.input {
+  @include input-field;
+  flex: 1;
+}
+
+.button {
+  @include button-primary;
+}
+
+.hint {
+  @extend %hintText;
+  margin: vars.$spacing-sm 0 0;
+}
+
+.usageBox {
+  @include box;
+}
+
+.usageNote {
+  @extend %hintText;
+  margin: 0 0 vars.$spacing-md;
+}
+
+.linkButton {
+  @include menu-text;
+  width: 100%;
+  padding: vars.$spacing-sm vars.$spacing-md;
+  background-color: transparent;
+  color: vars.$color-primary;
+  border: 1px solid vars.$color-primary;
+  border-radius: vars.$border-radius-md;
+  font-size: vars.$font-size-sm;
+  cursor: pointer;
+
+  &:hover {
+    background-color: vars.$color-primary;
+    color: #fff;
+  }
+}

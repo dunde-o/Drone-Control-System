@@ -1,0 +1,78 @@
+// 공통 텍스트 스타일
+%menuText {
+  word-break: keep-all;
+}
+
+// 드로어
+.drawer {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  width: 300px;
+  background-color: rgba(255, 255, 255, 0.95);
+  transition: right 0.3s ease;
+  z-index: 99;
+  display: flex;
+  border-radius: 12px;
+
+  &.open {
+    right: 12px;
+    box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &.closed {
+    right: -300px;
+    box-shadow: none;
+  }
+}
+
+// 탭 (책갈피)
+.tabContainer {
+  position: absolute;
+  left: -28px;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tabButton {
+  width: 28px;
+  padding: 16px 0;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+
+  &.active {
+    background-color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+    color: #333;
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &.inactive {
+    background-color: rgba(200, 200, 200, 0.9);
+    font-weight: 400;
+    color: #666;
+    box-shadow: none;
+  }
+}
+
+.tabLabel {
+  writing-mode: vertical-lr;
+}
+
+// 컨텐츠 영역
+.content {
+  @extend %menuText;
+  flex: 1;
+  padding: 20px;
+  padding-top: 80px;
+  overflow-y: auto;
+}

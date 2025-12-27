@@ -1,0 +1,27 @@
+@use '../../../styles/variables' as vars;
+@use '../../../styles/mixins' as *;
+@use '../common' as *;
+
+.container {
+  @extend %tabContainer;
+}
+
+.shortcutList {
+  @include menu-text;
+  color: vars.$color-text-secondary;
+  font-size: vars.$font-size-sm;
+  line-height: 1.8;
+}
+
+.shortcutRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: vars.$spacing-sm;
+}
+
+.shortcutKey {
+  background-color: vars.$color-background-box;
+  padding: 2px 6px;
+  border-radius: vars.$border-radius-sm;
+  font-family: monospace;
+}

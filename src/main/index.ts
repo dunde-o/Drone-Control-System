@@ -1,11 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, globalShortcut, Menu } from 'electron'
 import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { electronApp, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+
+let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -18,7 +20,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow?.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -42,17 +44,34 @@ app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  // 빈 메뉴로 기본 단축키 비활성화 (Ctrl+R, Ctrl+Shift+I 등)
+  Menu.setApplicationMenu(Menu.buildFromTemplate([]))
+
+  // F12로 DevTools 토글 (개발 모드에서만)
   app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+    if (is.dev) {
+      window.webContents.on('before-input-event', (event, input) => {
+        if (input.key === 'F12') {
+          window.webContents.toggleDevTools()
+          event.preventDefault()
+        }
+      })
+    }
   })
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
+
+  // Register global shortcuts for Ctrl+1,2,3
+  for (let i = 1; i <= 3; i++) {
+    globalShortcut.register(`CommandOrControl+${i}`, () => {
+      if (mainWindow) {
+        mainWindow.webContents.send('switch-tab', i)
+      }
+    })
+  }
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -68,6 +87,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })
 
 // In this file you can include the rest of your app's specific main process

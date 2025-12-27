@@ -1,0 +1,21 @@
+@use 'variables' as vars;
+@use 'mixins' as *;
+
+// 공통 컨테이너 스타일
+.container {
+  @include menu-text;
+}
+
+// 공통 텍스트 스타일
+.textPrimary {
+  color: vars.$color-text-primary;
+}
+
+.textSecondary {
+  color: vars.$color-text-secondary;
+}
+
+.textHint {
+  color: vars.$color-text-hint;
+  font-size: vars.$font-size-xs;
+}

@@ -1,0 +1,57 @@
+@use 'variables' as vars;
+
+// 텍스트 스타일 믹스인
+@mixin menu-text {
+  word-break: keep-all;
+}
+
+// 버튼 스타일 믹스인
+@mixin button-primary {
+  padding: vars.$spacing-sm vars.$spacing-lg;
+  background-color: vars.$color-primary;
+  color: #fff;
+  border: none;
+  border-radius: vars.$border-radius-md;
+  font-size: vars.$font-size-sm;
+  cursor: pointer;
+
+  &:hover {
+    background-color: vars.$color-primary-hover;
+  }
+}
+
+// 입력 필드 스타일 믹스인
+@mixin input-field {
+  padding: vars.$spacing-sm vars.$spacing-md;
+  border: 1px solid vars.$color-border;
+  border-radius: vars.$border-radius-md;
+  font-size: vars.$font-size-sm;
+  outline: none;
+
+  &:focus {
+    border-color: vars.$color-primary;
+  }
+}
+
+// 박스 스타일 믹스인
+@mixin box {
+  padding: vars.$spacing-lg;
+  background-color: vars.$color-background-box;
+  border-radius: vars.$border-radius-lg;
+}
+
+// 제목 스타일 믹스인
+@mixin heading-primary {
+  @include menu-text;
+  margin: 0;
+  margin-bottom: vars.$spacing-xl;
+  color: vars.$color-text-primary;
+}
+
+@mixin heading-secondary {
+  @include menu-text;
+  margin: 0;
+  margin-bottom: vars.$spacing-md;
+  color: vars.$color-text-muted;
+  font-size: vars.$font-size-md;
+}

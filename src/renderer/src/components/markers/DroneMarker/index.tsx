@@ -1,7 +1,7 @@
 import { AdvancedMarker } from '@vis.gl/react-google-maps'
-import { Plane } from 'lucide-react'
+import { Plane, WifiOff } from 'lucide-react'
 
-import { Drone } from '@renderer/contexts/WebSocketContext/types'
+import { Drone, DroneStatus } from '@renderer/contexts/WebSocketContext/types'
 
 import styles from './styles.module.scss'
 
@@ -11,31 +11,44 @@ interface DroneMarkerProps {
   onClick?: () => void
 }
 
-const DroneMarker = ({
-  drone,
-  isSelected,
-  onClick
-}: DroneMarkerProps): React.JSX.Element | null => {
-  // Only show marker for airborne drones (not idle or landing)
-  const airborneStatuses = ['ascending', 'hovering', 'moving', 'returning', 'returning_auto', 'mia']
-  if (!airborneStatuses.includes(drone.status)) {
-    return null
-  }
+// 상태별 스타일 클래스 매핑
+const STATUS_STYLE_MAP: Record<DroneStatus, string> = {
+  idle: styles.statusIdle,
+  ascending: styles.statusAscending,
+  hovering: styles.statusHovering,
+  moving: styles.statusMoving,
+  mia: styles.statusMia,
+  returning: styles.statusReturning,
+  landing: styles.statusLanding,
+  returning_auto: styles.statusAuto,
+  landing_auto: styles.statusAuto
+}
 
+// 광원효과를 보여줄 상태 (idle과 mia는 제외)
+const shouldShowPulse = (status: DroneStatus): boolean => !['idle', 'mia'].includes(status)
+
+const DroneMarker = ({ drone, isSelected, onClick }: DroneMarkerProps): React.JSX.Element => {
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
     onClick?.()
   }
 
+  const statusClass = STATUS_STYLE_MAP[drone.status] || ''
+  const showPulse = isSelected && shouldShowPulse(drone.status)
+
   return (
-    <AdvancedMarker position={drone.position} title={drone.name}>
+    <AdvancedMarker position={drone.position} title={drone.name} zIndex={10}>
       <div className={`${styles.wrapper} map-marker`}>
-        {isSelected && <span className={styles.pulse} />}
+        {showPulse && <span className={styles.pulse} />}
         <div
-          className={`${styles.marker} ${isSelected ? styles.selected : ''}`}
+          className={`${styles.marker} ${statusClass} ${isSelected ? styles.selected : ''}`}
           onClick={handleClick}
         >
-          <Plane size={20} strokeWidth={2.5} />
+          {drone.status === 'mia' ? (
+            <WifiOff size={20} strokeWidth={2.5} />
+          ) : (
+            <Plane size={20} strokeWidth={2.5} />
+          )}
         </div>
       </div>
     </AdvancedMarker>

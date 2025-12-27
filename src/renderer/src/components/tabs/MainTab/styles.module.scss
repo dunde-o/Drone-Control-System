@@ -163,6 +163,7 @@
 .droneName {
   font-weight: 600;
   font-size: vars.$font-size-md;
+  color: vars.$color-text-primary;
 }
 
 .droneStatus {
@@ -172,18 +173,18 @@
 }
 
 .statusIdle {
-  background-color: rgba(vars.$color-text-muted, 0.2);
-  color: vars.$color-text-secondary;
+  background-color: rgba(#999, 0.2);
+  color: #999;
 }
 
 .statusAscending {
-  background-color: rgba(#9b59b6, 0.2);
-  color: #9b59b6;
+  background-color: rgba(vars.$color-warning, 0.2);
+  color: vars.$color-warning;
 }
 
 .statusHovering {
-  background-color: rgba(vars.$color-primary, 0.2);
-  color: vars.$color-primary;
+  background-color: rgba(#3498db, 0.2);
+  color: #3498db;
 }
 
 .statusMoving {
@@ -197,13 +198,13 @@
 }
 
 .statusReturning {
-  background-color: rgba(vars.$color-warning, 0.2);
-  color: vars.$color-warning;
+  background-color: rgba(#9b59b6, 0.2);
+  color: #9b59b6;
 }
 
 .statusLanding {
-  background-color: rgba(#3498db, 0.2);
-  color: #3498db;
+  background-color: rgba(vars.$color-warning, 0.2);
+  color: vars.$color-warning;
 }
 
 .statusAuto {
@@ -215,7 +216,6 @@
   display: flex;
   align-items: center;
   gap: vars.$spacing-md;
-  margin-bottom: vars.$spacing-sm;
 }
 
 .droneBattery {
@@ -224,6 +224,18 @@
   gap: vars.$spacing-xs;
   font-size: vars.$font-size-sm;
   color: vars.$color-text-secondary;
+
+  &.batteryGood {
+    color: vars.$color-success;
+  }
+
+  &.batteryWarning {
+    color: vars.$color-warning;
+  }
+
+  &.batteryDanger {
+    color: vars.$color-danger;
+  }
 }
 
 .droneAltitude {
@@ -234,22 +246,65 @@
   color: vars.$color-text-secondary;
 }
 
-.droneStartButton {
+.droneActions {
+  display: flex;
+  gap: vars.$spacing-xs;
+  margin-left: auto;
+}
+
+.droneActionButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: vars.$spacing-xs;
-  width: 100%;
-  padding: vars.$spacing-sm vars.$spacing-md;
+  width: 26px;
+  height: 26px;
+  padding: 0;
   border: none;
   border-radius: vars.$border-radius-sm;
+  cursor: pointer;
+  transition:
+    background-color vars.$transition-fast,
+    opacity vars.$transition-fast;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.takeoffButton {
+  background-color: vars.$color-success;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background-color: #16a34a;
+  }
+}
+
+.landButton {
+  background-color: vars.$color-warning;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background-color: #d97706;
+  }
+}
+
+.returnButton {
   background-color: vars.$color-primary;
   color: #fff;
-  font-size: vars.$font-size-sm;
-  cursor: pointer;
-  transition: background-color 0.2s;
 
-  &:hover {
-    background-color: color.adjust(#3498db, $lightness: -10%);
+  &:hover:not(:disabled) {
+    background-color: vars.$color-primary-hover;
+  }
+}
+
+.locateButton {
+  background-color: vars.$color-background-box;
+  color: vars.$color-text-secondary;
+
+  &:hover:not(:disabled) {
+    background-color: vars.$color-border;
+    color: vars.$color-text-primary;
   }
 }

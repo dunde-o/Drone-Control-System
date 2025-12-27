@@ -75,6 +75,9 @@ export type WebSocketOutgoingMessageType =
   | 'drone:start'
   | 'drone:stop'
   | 'drone:move'
+  | 'drone:takeoff'
+  | 'drone:land'
+  | 'drone:returnToBase'
 
 export interface HeartbeatPayload {
   init?: boolean

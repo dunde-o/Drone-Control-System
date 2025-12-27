@@ -10,6 +10,10 @@ export interface MainTabProps {
   pickingLat: string
   pickingLng: string
   onPanToBase?: () => void
+  onTakeoff?: (droneId: string) => void
+  onLand?: (droneId: string) => void
+  onReturnToBase?: (droneId: string) => void
+  onLocateDrone?: (droneId: string) => void
 }
 
 export const TABS: TabConfig[] = [

@@ -5,6 +5,7 @@ import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-ma
 import { useApiKey, useBaseMovement, useBasePosition, useDrones } from '@renderer/hooks/queries'
 import { useWebSocket } from '@renderer/contexts/WebSocketContext'
 import { Drone } from '@renderer/contexts/WebSocketContext/types'
+import ConfirmDialog from '@renderer/components/ConfirmDialog'
 import Drawer from '@renderer/components/Drawer'
 import MarkerInfoDrawer from '@renderer/components/MarkerInfoDrawer'
 import DronePath from '@renderer/components/DronePath'
@@ -94,6 +95,14 @@ const App = (): React.JSX.Element => {
   const [pickingLat, setPickingLat] = useState('')
   const [pickingLng, setPickingLng] = useState('')
 
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    type: 'takeoff' | 'land' | null
+    droneId: string | null
+    droneName: string | null
+  }>({ isOpen: false, type: null, droneId: null, droneName: null })
+
   // Refs for closures
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
@@ -147,11 +156,11 @@ const App = (): React.JSX.Element => {
     }
   }, [isPickingBase])
 
-  // 선택된 드론 (hovering 또는 moving 상태만 이동 명령 가능)
+  // 선택된 드론 (hovering, moving, returning 상태만 이동 명령 가능)
   const selectedDrone = useMemo(() => {
     if (!selectedMarkerId || selectedMarkerId === 'base') return null
     const drone = drones.find((d) => d.id === selectedMarkerId)
-    if (drone && (drone.status === 'hovering' || drone.status === 'moving')) {
+    if (drone && ['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
       return drone
     }
     return null
@@ -229,6 +238,18 @@ const App = (): React.JSX.Element => {
     }
   }, [basePosition])
 
+  // 드론 위치로 이동하고 드론 선택
+  const handleLocateDrone = useCallback(
+    (droneId: string): void => {
+      const drone = drones.find((d) => d.id === droneId)
+      if (drone && panToRef.current) {
+        panToRef.current(drone.position)
+        setSelectedMarkerId(droneId)
+      }
+    },
+    [drones]
+  )
+
   const handleMapMouseMove = useCallback(
     (e: MapMouseEvent): void => {
       if (isPickingBase && e.detail.latLng) {
@@ -242,6 +263,65 @@ const App = (): React.JSX.Element => {
   )
 
   const { sendMessage } = useWebSocket()
+
+  // 드론 이륙 요청 (확인 팝업 표시)
+  const handleTakeoffRequest = useCallback(
+    (droneId: string): void => {
+      const drone = drones.find((d) => d.id === droneId)
+      if (drone) {
+        setConfirmDialog({
+          isOpen: true,
+          type: 'takeoff',
+          droneId,
+          droneName: drone.name
+        })
+      }
+    },
+    [drones]
+  )
+
+  // 드론 착륙 요청 (확인 팝업 표시)
+  const handleLandRequest = useCallback(
+    (droneId: string): void => {
+      const drone = drones.find((d) => d.id === droneId)
+      if (drone) {
+        setConfirmDialog({
+          isOpen: true,
+          type: 'land',
+          droneId,
+          droneName: drone.name
+        })
+      }
+    },
+    [drones]
+  )
+
+  // 리턴투베이스 (확인 없이 바로 실행)
+  const handleReturnToBase = useCallback(
+    (droneId: string): void => {
+      sendMessage({
+        type: 'drone:returnToBase',
+        payload: { droneId }
+      })
+    },
+    [sendMessage]
+  )
+
+  // 확인 팝업에서 확인 클릭
+  const handleConfirmAction = useCallback((): void => {
+    if (confirmDialog.droneId && confirmDialog.type) {
+      sendMessage({
+        type: confirmDialog.type === 'takeoff' ? 'drone:takeoff' : 'drone:land',
+        payload: { droneId: confirmDialog.droneId }
+      })
+    }
+    setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
+  }, [confirmDialog, sendMessage])
+
+  // 확인 팝업에서 취소 클릭
+  const handleCancelConfirm = useCallback((): void => {
+    setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
+  }, [])
 
   // 맵 우클릭으로 드론 이동 명령
   const handleMapContextMenu = useCallback(
@@ -349,7 +429,28 @@ const App = (): React.JSX.Element => {
         <MapController onPanToBase={handleSetPanTo} onDroneMove={handleDroneMove} />
       </Map>
 
-      <MarkerInfoDrawer marker={selectedMarker} onClose={handleCloseMarkerInfo} />
+      <MarkerInfoDrawer
+        marker={selectedMarker}
+        onClose={handleCloseMarkerInfo}
+        onTakeoff={handleTakeoffRequest}
+        onLand={handleLandRequest}
+        onReturnToBase={handleReturnToBase}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.type === 'takeoff' ? '이륙 확인' : '착륙 확인'}
+        message={
+          confirmDialog.type === 'takeoff'
+            ? `${confirmDialog.droneName}을(를) 이륙시키시겠습니까?`
+            : `${confirmDialog.droneName}을(를) 현재 위치에 착륙시키시겠습니까?`
+        }
+        confirmText={confirmDialog.type === 'takeoff' ? '이륙' : '착륙'}
+        cancelText="취소"
+        variant={confirmDialog.type === 'land' ? 'danger' : 'primary'}
+        onConfirm={handleConfirmAction}
+        onCancel={handleCancelConfirm}
+      />
 
       <Drawer
         isOpen={drawerOpen}
@@ -364,7 +465,11 @@ const App = (): React.JSX.Element => {
             onTogglePickBase: handleTogglePickBase,
             pickingLat,
             pickingLng,
-            onPanToBase: handlePanToBase
+            onPanToBase: handlePanToBase,
+            onTakeoff: handleTakeoffRequest,
+            onLand: handleLandRequest,
+            onReturnToBase: handleReturnToBase,
+            onLocateDrone: handleLocateDrone
           }}
         />
       </Drawer>

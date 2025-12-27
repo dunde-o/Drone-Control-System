@@ -33,6 +33,24 @@
   border-bottom: 1px solid vars.$color-border;
 }
 
+.typeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: vars.$border-radius-sm;
+  color: #fff;
+
+  &.typeIconDrone {
+    background-color: vars.$color-success;
+  }
+
+  &.typeIconBase {
+    background-color: vars.$color-primary;
+  }
+}
+
 .title {
   margin: 0;
   font-size: vars.$font-size-base;
@@ -40,12 +58,56 @@
   flex: 1;
 }
 
-.type {
-  font-size: vars.$font-size-xs;
-  color: white;
-  background-color: vars.$color-primary;
-  padding: vars.$spacing-xs vars.$spacing-sm;
+.actionButtons {
+  display: flex;
+  gap: vars.$spacing-xs;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
   border-radius: vars.$border-radius-sm;
+  cursor: pointer;
+  transition:
+    background-color vars.$transition-fast,
+    opacity vars.$transition-fast;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.takeoffButton {
+  background-color: vars.$color-success;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background-color: #16a34a;
+  }
+}
+
+.landButton {
+  background-color: vars.$color-warning;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background-color: #d97706;
+  }
+}
+
+.returnButton {
+  background-color: vars.$color-primary;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background-color: vars.$color-primary-hover;
+  }
 }
 
 .closeButton {
@@ -115,6 +177,18 @@
   gap: vars.$spacing-xs;
   font-size: vars.$font-size-sm;
   color: vars.$color-text-secondary;
+
+  &.batteryGood {
+    color: vars.$color-success;
+  }
+
+  &.batteryWarning {
+    color: vars.$color-warning;
+  }
+
+  &.batteryDanger {
+    color: vars.$color-danger;
+  }
 }
 
 .droneInfo {
@@ -145,18 +219,18 @@
 }
 
 .statusIdle {
-  background-color: rgba(vars.$color-text-muted, 0.2);
-  color: vars.$color-text-secondary;
+  background-color: rgba(#999, 0.2);
+  color: #999;
 }
 
 .statusAscending {
-  background-color: rgba(#9b59b6, 0.2);
-  color: #9b59b6;
+  background-color: rgba(vars.$color-warning, 0.2);
+  color: vars.$color-warning;
 }
 
 .statusHovering {
-  background-color: rgba(vars.$color-primary, 0.2);
-  color: vars.$color-primary;
+  background-color: rgba(#3498db, 0.2);
+  color: #3498db;
 }
 
 .statusMoving {
@@ -170,13 +244,13 @@
 }
 
 .statusReturning {
-  background-color: rgba(vars.$color-warning, 0.2);
-  color: vars.$color-warning;
+  background-color: rgba(#9b59b6, 0.2);
+  color: #9b59b6;
 }
 
 .statusLanding {
-  background-color: rgba(#3498db, 0.2);
-  color: #3498db;
+  background-color: rgba(vars.$color-warning, 0.2);
+  color: vars.$color-warning;
 }
 
 .statusAuto {

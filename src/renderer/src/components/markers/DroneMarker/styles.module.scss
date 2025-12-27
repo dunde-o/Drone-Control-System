@@ -1,6 +1,16 @@
 @use '~styles/variables' as vars;
 @use '~components/markers/common' as *;
 
+// 상태별 색상 정의
+$status-idle: #999; // 대기 - 밝은 회색
+$status-ascending: vars.$color-warning; // 이륙 중 - 노란색
+$status-hovering: #3498db; // 대기 비행 - 하늘색
+$status-moving: vars.$color-success; // 이동 중 - 초록색
+$status-mia: vars.$color-danger;
+$status-returning: #9b59b6; // 복귀 중 - 보라색
+$status-landing: vars.$color-warning; // 착륙 중 - 노란색
+$status-auto: vars.$color-danger;
+
 .wrapper {
   @extend %marker-wrapper;
 }
@@ -26,4 +36,45 @@
   width: 36px;
   height: 36px;
   background-color: vars.$color-success;
+}
+
+// 상태별 배경색 스타일
+.statusIdle {
+  --marker-color: #{$status-idle};
+  background-color: $status-idle;
+}
+
+.statusAscending {
+  --marker-color: #{$status-ascending};
+  background-color: $status-ascending;
+}
+
+.statusHovering {
+  --marker-color: #{$status-hovering};
+  background-color: $status-hovering;
+}
+
+.statusMoving {
+  --marker-color: #{$status-moving};
+  background-color: $status-moving;
+}
+
+.statusMia {
+  --marker-color: #{$status-mia};
+  background-color: $status-mia;
+}
+
+.statusReturning {
+  --marker-color: #{$status-returning};
+  background-color: $status-returning;
+}
+
+.statusLanding {
+  --marker-color: #{$status-landing};
+  background-color: $status-landing;
+}
+
+.statusAuto {
+  --marker-color: #{$status-auto};
+  background-color: $status-auto;
 }

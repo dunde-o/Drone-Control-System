@@ -18,6 +18,10 @@ const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.E
         pickingLat={mainTabProps.pickingLat}
         pickingLng={mainTabProps.pickingLng}
         onPanToBase={mainTabProps.onPanToBase}
+        onTakeoff={mainTabProps.onTakeoff}
+        onLand={mainTabProps.onLand}
+        onReturnToBase={mainTabProps.onReturnToBase}
+        onLocateDrone={mainTabProps.onLocateDrone}
       />
     ),
     server: <ServerSettingsTab />,

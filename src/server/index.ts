@@ -312,8 +312,14 @@ class DroneServer extends EventEmitter {
       drone.waypoints.shift() // 첫 번째 waypoint 제거
 
       if (drone.waypoints.length === 0) {
-        drone.status = 'hovering'
-        console.log(`[Server] Drone ${drone.id} reached final waypoint, now hovering`)
+        // returning 상태면 베이스에 도착했으므로 착륙
+        if (drone.status === 'returning' || drone.status === 'returning_auto') {
+          drone.status = 'landing'
+          console.log(`[Server] Drone ${drone.id} reached base, now landing`)
+        } else {
+          drone.status = 'hovering'
+          console.log(`[Server] Drone ${drone.id} reached final waypoint, now hovering`)
+        }
       } else {
         console.log(
           `[Server] Drone ${drone.id} reached waypoint, ${drone.waypoints.length} remaining`
@@ -484,8 +490,8 @@ class DroneServer extends EventEmitter {
           const drone = this.drones.get(payload.droneId)
           if (drone && drone.status === 'idle') {
             drone.status = 'ascending'
-            drone.position = { ...this.basePosition }
-            console.log(`[Server] Drone ${drone.id} ascending from base`)
+            // 현재 위치에서 이륙 (위치 변경하지 않음)
+            console.log(`[Server] Drone ${drone.id} ascending from current position`)
 
             this.broadcast({
               type: 'drone:updated',
@@ -512,12 +518,20 @@ class DroneServer extends EventEmitter {
 
         if (payload && payload.droneId && Array.isArray(payload.waypoints)) {
           const drone = this.drones.get(payload.droneId)
-          if (drone && (drone.status === 'hovering' || drone.status === 'moving')) {
-            if (payload.append) {
-              // Shift+우클릭: 기존 경로에 추가
+          // hovering, moving, returning 상태에서 이동 명령 허용
+          if (
+            drone &&
+            ['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)
+          ) {
+            if (
+              payload.append &&
+              drone.status !== 'returning' &&
+              drone.status !== 'returning_auto'
+            ) {
+              // Shift+우클릭: 기존 경로에 추가 (복귀 중에는 append 무시하고 덮어쓰기)
               drone.waypoints.push(...payload.waypoints)
             } else {
-              // 일반 우클릭: 기존 경로 덮어쓰기
+              // 일반 우클릭 또는 복귀 중: 기존 경로 덮어쓰기
               drone.waypoints = [...payload.waypoints]
             }
             drone.status = 'moving'
@@ -532,7 +546,82 @@ class DroneServer extends EventEmitter {
           } else {
             this.sendToClient(ws, {
               type: 'drone:error',
-              payload: { error: 'Drone not found or not in hovering/moving state' }
+              payload: { error: 'Drone not found or not in movable state' }
+            })
+          }
+        }
+        break
+      }
+
+      case 'drone:takeoff': {
+        const payload = message.payload as { droneId?: string } | undefined
+        if (payload && payload.droneId) {
+          const drone = this.drones.get(payload.droneId)
+          if (drone && drone.status === 'idle') {
+            drone.status = 'ascending'
+            // 현재 위치에서 이륙 (위치 변경하지 않음)
+            console.log(`[Server] Drone ${drone.id} taking off from current position`)
+
+            this.broadcast({
+              type: 'drone:updated',
+              payload: { drone }
+            })
+          } else {
+            this.sendToClient(ws, {
+              type: 'drone:error',
+              payload: { error: 'Drone not found or not in idle state' }
+            })
+          }
+        }
+        break
+      }
+
+      case 'drone:land': {
+        const payload = message.payload as { droneId?: string } | undefined
+        if (payload && payload.droneId) {
+          const drone = this.drones.get(payload.droneId)
+          if (
+            drone &&
+            ['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)
+          ) {
+            drone.status = 'landing'
+            drone.waypoints = [] // 모든 웨이포인트 제거
+            console.log(`[Server] Drone ${drone.id} landing at current position`)
+
+            this.broadcast({
+              type: 'drone:updated',
+              payload: { drone }
+            })
+          } else {
+            this.sendToClient(ws, {
+              type: 'drone:error',
+              payload: { error: 'Drone not found or not in airborne state' }
+            })
+          }
+        }
+        break
+      }
+
+      case 'drone:returnToBase': {
+        const payload = message.payload as { droneId?: string } | undefined
+        if (payload && payload.droneId) {
+          const drone = this.drones.get(payload.droneId)
+          if (
+            drone &&
+            ['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)
+          ) {
+            drone.status = 'returning'
+            drone.waypoints = [{ ...this.basePosition }] // 베이스로 웨이포인트 설정
+            console.log(`[Server] Drone ${drone.id} returning to base`)
+
+            this.broadcast({
+              type: 'drone:updated',
+              payload: { drone }
+            })
+          } else {
+            this.sendToClient(ws, {
+              type: 'drone:error',
+              payload: { error: 'Drone not found or not in airborne state' }
             })
           }
         }

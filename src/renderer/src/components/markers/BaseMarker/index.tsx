@@ -19,7 +19,7 @@ const BaseMarker = ({ position, isSelected, onClick }: BaseMarkerProps): React.J
   }
 
   return (
-    <AdvancedMarker position={position} title="Base">
+    <AdvancedMarker position={position} title="Base" zIndex={1}>
       <div className={`${styles.wrapper} map-marker`}>
         {isSelected && <span className={styles.pulse} />}
         <div

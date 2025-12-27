@@ -1,9 +1,22 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 
-import { ArrowUpFromLine, Battery, Loader2, Locate, MapPinned, Play, X } from 'lucide-react'
+import {
+  ArrowUpFromLine,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  BatteryWarning,
+  Crosshair,
+  Home,
+  Loader2,
+  Locate,
+  MapPinned,
+  PlaneLanding,
+  PlaneTakeoff,
+  X
+} from 'lucide-react'
 
 import { useUpdateBasePosition } from '@renderer/hooks/mutations'
-import { useWebSocket } from '@renderer/contexts/WebSocketContext'
 import { useBasePosition, useConnectionStatus, useDrones } from '@renderer/hooks/queries'
 import { Drone } from '@renderer/contexts/WebSocketContext/types'
 
@@ -11,8 +24,22 @@ import styles from './styles.module.scss'
 
 interface DroneCardProps {
   drone: Drone
-  onStart: () => void
+  onTakeoff: () => void
+  onLand: () => void
+  onReturnToBase: () => void
+  onLocate: () => void
 }
+
+// 지상 대기 상태 (이륙 버튼 표시)
+const isGroundStatus = (status: Drone['status']): boolean => status === 'idle'
+
+// 공중 상태 (착륙 버튼 표시)
+const isAirStatus = (status: Drone['status']): boolean =>
+  ['hovering', 'moving', 'returning', 'returning_auto'].includes(status)
+
+// 버튼 비활성화 상태 (이/착륙 중)
+const isTransitioning = (status: Drone['status']): boolean =>
+  ['ascending', 'landing', 'landing_auto', 'mia'].includes(status)
 
 const STATUS_CONFIG: Record<Drone['status'], { label: string; className: string }> = {
   idle: { label: '대기', className: 'statusIdle' },
@@ -26,10 +53,41 @@ const STATUS_CONFIG: Record<Drone['status'], { label: string; className: string 
   landing_auto: { label: '자동 착륙', className: 'statusAuto' }
 }
 
-const DroneCard = ({ drone, onStart }: DroneCardProps): React.JSX.Element => {
+const getBatteryIcon = (battery: number): React.JSX.Element => {
+  if (battery < 20) return <BatteryWarning size={14} />
+  if (battery < 40) return <BatteryLow size={14} />
+  if (battery < 70) return <BatteryMedium size={14} />
+  return <BatteryFull size={14} />
+}
+
+const getBatteryColorClass = (battery: number): string => {
+  if (battery < 40) return 'batteryDanger'
+  if (battery < 70) return 'batteryWarning'
+  return 'batteryGood'
+}
+
+const DroneCard = ({
+  drone,
+  onTakeoff,
+  onLand,
+  onReturnToBase,
+  onLocate
+}: DroneCardProps): React.JSX.Element => {
   const statusConfig = STATUS_CONFIG[drone.status] || {
     label: drone.status,
     className: 'statusIdle'
+  }
+  const batteryColorClass = getBatteryColorClass(drone.battery)
+
+  const canTakeoffOrLand = !isTransitioning(drone.status)
+  const canReturnToBase = isAirStatus(drone.status) && !isTransitioning(drone.status)
+
+  const handleTakeoffLand = (): void => {
+    if (isGroundStatus(drone.status)) {
+      onTakeoff()
+    } else if (isAirStatus(drone.status)) {
+      onLand()
+    }
   }
 
   return (
@@ -41,21 +99,42 @@ const DroneCard = ({ drone, onStart }: DroneCardProps): React.JSX.Element => {
         </span>
       </div>
       <div className={styles.droneInfo}>
-        <div className={styles.droneBattery}>
-          <Battery size={14} />
+        <div
+          className={`${styles.droneBattery} ${batteryColorClass ? styles[batteryColorClass] : ''}`}
+        >
+          {getBatteryIcon(drone.battery)}
           <span>{drone.battery}%</span>
         </div>
         <div className={styles.droneAltitude}>
           <ArrowUpFromLine size={14} />
           <span>{drone.altitude.toFixed(1)}m</span>
         </div>
+        <div className={styles.droneActions}>
+          <button
+            className={`${styles.droneActionButton} ${styles.locateButton}`}
+            onClick={onLocate}
+            title="위치 보기"
+          >
+            <Crosshair size={14} />
+          </button>
+          <button
+            className={`${styles.droneActionButton} ${isGroundStatus(drone.status) ? styles.takeoffButton : styles.landButton}`}
+            onClick={handleTakeoffLand}
+            disabled={!canTakeoffOrLand}
+            title={isGroundStatus(drone.status) ? '이륙' : '착륙'}
+          >
+            {isGroundStatus(drone.status) ? <PlaneTakeoff size={14} /> : <PlaneLanding size={14} />}
+          </button>
+          <button
+            className={`${styles.droneActionButton} ${styles.returnButton}`}
+            onClick={onReturnToBase}
+            disabled={!canReturnToBase}
+            title="복귀"
+          >
+            <Home size={14} />
+          </button>
+        </div>
       </div>
-      {drone.status === 'idle' && (
-        <button className={styles.droneStartButton} onClick={onStart}>
-          <Play size={14} />
-          시작
-        </button>
-      )}
     </div>
   )
 }
@@ -66,6 +145,10 @@ interface MainTabProps {
   pickingLat: string
   pickingLng: string
   onPanToBase?: () => void
+  onTakeoff?: (droneId: string) => void
+  onLand?: (droneId: string) => void
+  onReturnToBase?: (droneId: string) => void
+  onLocateDrone?: (droneId: string) => void
 }
 
 const MainTab = ({
@@ -73,13 +156,16 @@ const MainTab = ({
   onTogglePickBase,
   pickingLat,
   pickingLng,
-  onPanToBase
+  onPanToBase,
+  onTakeoff,
+  onLand,
+  onReturnToBase,
+  onLocateDrone
 }: MainTabProps): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
   const { data: basePosition } = useBasePosition()
   const { data: drones = [] } = useDrones()
   const updateBasePosition = useUpdateBasePosition()
-  const { sendMessage } = useWebSocket()
 
   const [baseLatInput, setBaseLatInput] = useState('')
   const [baseLngInput, setBaseLngInput] = useState('')
@@ -211,12 +297,10 @@ const MainTab = ({
               <DroneCard
                 key={drone.id}
                 drone={drone}
-                onStart={() => {
-                  sendMessage({
-                    type: 'drone:start',
-                    payload: { droneId: drone.id }
-                  })
-                }}
+                onTakeoff={() => onTakeoff?.(drone.id)}
+                onLand={() => onLand?.(drone.id)}
+                onReturnToBase={() => onReturnToBase?.(drone.id)}
+                onLocate={() => onLocateDrone?.(drone.id)}
               />
             ))}
           </div>

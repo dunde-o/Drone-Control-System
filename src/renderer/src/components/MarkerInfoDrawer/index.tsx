@@ -1,4 +1,15 @@
-import { ArrowUpFromLine, Battery, X } from 'lucide-react'
+import {
+  ArrowUpFromLine,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  BatteryWarning,
+  Home,
+  Plane,
+  PlaneLanding,
+  PlaneTakeoff,
+  X
+} from 'lucide-react'
 
 import { DroneStatus } from '@renderer/contexts/WebSocketContext/types'
 
@@ -21,6 +32,9 @@ export interface MarkerInfo {
 interface MarkerInfoDrawerProps {
   marker: MarkerInfo | null
   onClose: () => void
+  onTakeoff?: (droneId: string) => void
+  onLand?: (droneId: string) => void
+  onReturnToBase?: (droneId: string) => void
 }
 
 const STATUS_CONFIG: Record<DroneStatus, { label: string; className: string }> = {
@@ -35,14 +49,38 @@ const STATUS_CONFIG: Record<DroneStatus, { label: string; className: string }> =
   landing_auto: { label: '자동 착륙', className: 'statusAuto' }
 }
 
-const MarkerInfoDrawer = ({ marker, onClose }: MarkerInfoDrawerProps): React.JSX.Element | null => {
-  if (!marker) return null
+const getBatteryIcon = (battery: number): React.JSX.Element => {
+  if (battery < 20) return <BatteryWarning size={14} />
+  if (battery < 40) return <BatteryLow size={14} />
+  if (battery < 70) return <BatteryMedium size={14} />
+  return <BatteryFull size={14} />
+}
 
-  const typeLabels: Record<MarkerInfo['type'], string> = {
-    base: 'Base Station',
-    drone: 'Drone',
-    waypoint: 'Waypoint'
-  }
+const getBatteryColorClass = (battery: number): string => {
+  if (battery < 40) return 'batteryDanger'
+  if (battery < 70) return 'batteryWarning'
+  return 'batteryGood'
+}
+
+// 지상 대기 상태 (이륙 버튼 표시)
+const isGroundStatus = (status: DroneStatus): boolean => status === 'idle'
+
+// 공중 상태 (착륙 버튼 표시)
+const isAirStatus = (status: DroneStatus): boolean =>
+  ['hovering', 'moving', 'returning', 'returning_auto'].includes(status)
+
+// 버튼 비활성화 상태 (이/착륙 중)
+const isTransitioning = (status: DroneStatus): boolean =>
+  ['ascending', 'landing', 'landing_auto', 'mia'].includes(status)
+
+const MarkerInfoDrawer = ({
+  marker,
+  onClose,
+  onTakeoff,
+  onLand,
+  onReturnToBase
+}: MarkerInfoDrawerProps): React.JSX.Element | null => {
+  if (!marker) return null
 
   const isDrone = marker.type === 'drone'
 
@@ -50,17 +88,62 @@ const MarkerInfoDrawer = ({ marker, onClose }: MarkerInfoDrawerProps): React.JSX
     return STATUS_CONFIG[status] || { label: status, className: 'statusIdle' }
   }
 
+  const handleTakeoffLand = (): void => {
+    if (!marker.status) return
+    if (isGroundStatus(marker.status)) {
+      onTakeoff?.(marker.id)
+    } else if (isAirStatus(marker.status)) {
+      onLand?.(marker.id)
+    }
+  }
+
+  const handleReturnToBase = (): void => {
+    onReturnToBase?.(marker.id)
+  }
+
+  const canTakeoffOrLand = marker.status && !isTransitioning(marker.status)
+  const canReturnToBase =
+    marker.status && isAirStatus(marker.status) && !isTransitioning(marker.status)
+
   return (
     <div className={styles.drawer}>
       <div className={styles.header}>
+        <span
+          className={`${styles.typeIcon} ${isDrone ? styles.typeIconDrone : styles.typeIconBase}`}
+        >
+          {isDrone ? <Plane size={16} /> : <Home size={16} />}
+        </span>
         <h3 className={styles.title}>{marker.name}</h3>
+        {isDrone && marker.status && (
+          <div className={styles.actionButtons}>
+            <button
+              className={`${styles.actionButton} ${isGroundStatus(marker.status) ? styles.takeoffButton : styles.landButton}`}
+              onClick={handleTakeoffLand}
+              disabled={!canTakeoffOrLand}
+              title={isGroundStatus(marker.status) ? '이륙' : '착륙'}
+            >
+              {isGroundStatus(marker.status) ? (
+                <PlaneTakeoff size={16} />
+              ) : (
+                <PlaneLanding size={16} />
+              )}
+            </button>
+            <button
+              className={`${styles.actionButton} ${styles.returnButton}`}
+              onClick={handleReturnToBase}
+              disabled={!canReturnToBase}
+              title="복귀"
+            >
+              <Home size={16} />
+            </button>
+          </div>
+        )}
         {isDrone && marker.battery !== undefined && (
-          <div className={styles.battery}>
-            <Battery size={14} />
+          <div className={`${styles.battery} ${styles[getBatteryColorClass(marker.battery)]}`}>
+            {getBatteryIcon(marker.battery)}
             <span>{marker.battery}%</span>
           </div>
         )}
-        <span className={styles.type}>{typeLabels[marker.type]}</span>
         <button className={styles.closeButton} onClick={onClose}>
           <X size={18} />
         </button>

@@ -20,10 +20,20 @@ export interface TabProps {
   apiKeyInput: string
   onApiKeyInputChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyApiKey: () => void
+  // Server settings tab props
+  serverHost: string
+  serverPort: string
+  onServerHostChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onServerPortChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onApplyServer: () => void
+  isConnected: boolean
+  onConnect: () => void
+  onDisconnect: () => void
 }
 
 export const TABS: TabConfig[] = [
   { id: 'main', label: 'MAIN' },
-  { id: 'api', label: 'API 세팅' },
+  { id: 'server', label: 'SERVER' },
+  { id: 'api', label: 'API' },
   { id: 'help', label: 'HELP' }
 ]

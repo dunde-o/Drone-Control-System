@@ -1,0 +1,83 @@
+@use '~styles/variables' as vars;
+@use '~styles/mixins' as *;
+@use '~components/tabs/common' as *;
+
+.container {
+  @extend %tabContainer;
+}
+
+.section {
+  margin-bottom: vars.$spacing-lg;
+}
+
+.label {
+  @extend %labelText;
+}
+
+.input {
+  @include input-field;
+  width: 100%;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: vars.$spacing-sm;
+  margin-bottom: vars.$spacing-xl;
+}
+
+.button {
+  @include button-primary;
+  flex: 1;
+}
+
+.connectButton {
+  @include button-primary;
+  flex: 1;
+  background-color: vars.$color-success;
+
+  &:hover:not(:disabled) {
+    background-color: darken(#22c55e, 10%);
+  }
+}
+
+.disconnectButton {
+  @include button-primary;
+  flex: 1;
+  background-color: vars.$color-danger;
+
+  &:hover:not(:disabled) {
+    background-color: darken(#ef4444, 10%);
+  }
+}
+
+.statusBox {
+  @include box;
+}
+
+.statusRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: vars.$spacing-sm 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid vars.$color-border;
+  }
+}
+
+.statusLabel {
+  @extend %hintText;
+}
+
+.statusValue {
+  font-size: vars.$font-size-sm;
+  font-weight: 500;
+}
+
+.connected {
+  color: vars.$color-success;
+}
+
+.disconnected {
+  color: vars.$color-danger;
+}

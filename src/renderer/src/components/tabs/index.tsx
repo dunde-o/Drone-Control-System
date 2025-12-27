@@ -2,6 +2,7 @@ import ApiSettingsTab from './ApiSettingsTab'
 import { TabProps } from './constants'
 import HelpTab from './HelpTab'
 import MainTab from './MainTab'
+import ServerSettingsTab from './ServerSettingsTab'
 
 interface TabContentProps {
   activeTabId: string
@@ -21,6 +22,18 @@ const TabContent = ({ activeTabId, tabProps }: TabContentProps): React.JSX.Eleme
         onApplyBase={tabProps.onApplyBase}
         isPickingBase={tabProps.isPickingBase}
         onTogglePickBase={tabProps.onTogglePickBase}
+      />
+    ),
+    server: (
+      <ServerSettingsTab
+        serverHost={tabProps.serverHost}
+        serverPort={tabProps.serverPort}
+        onServerHostChange={tabProps.onServerHostChange}
+        onServerPortChange={tabProps.onServerPortChange}
+        onApplyServer={tabProps.onApplyServer}
+        isConnected={tabProps.isConnected}
+        onConnect={tabProps.onConnect}
+        onDisconnect={tabProps.onDisconnect}
       />
     ),
     api: (

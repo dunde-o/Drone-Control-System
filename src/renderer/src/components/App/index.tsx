@@ -8,7 +8,12 @@ import BaseMarker from '../markers/BaseMarker'
 import TabContent from '../tabs'
 import { TABS } from '../tabs/constants'
 
-import { DEFAULT_API_KEY, DEFAULT_BASE_POSITION } from './constants'
+import {
+  DEFAULT_API_KEY,
+  DEFAULT_BASE_POSITION,
+  DEFAULT_SERVER_HOST,
+  DEFAULT_SERVER_PORT
+} from './constants'
 
 const App = (): React.JSX.Element => {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -21,6 +26,9 @@ const App = (): React.JSX.Element => {
   const [isPickingBase, setIsPickingBase] = useState(false)
   const [savedBaseInputs, setSavedBaseInputs] = useState({ lat: '', lng: '' })
   const [selectedMarker, setSelectedMarker] = useState<MarkerInfo | null>(null)
+  const [serverHost, setServerHost] = useState(DEFAULT_SERVER_HOST)
+  const [serverPort, setServerPort] = useState(DEFAULT_SERVER_PORT)
+  const [isConnected, setIsConnected] = useState(false)
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
 
@@ -54,6 +62,28 @@ const App = (): React.JSX.Element => {
 
   const handleApplyApiKey = (): void => {
     setApiKey(apiKeyInput)
+  }
+
+  const handleChangeServerHost = (e: ChangeEvent<HTMLInputElement>): void => {
+    setServerHost(e.target.value)
+  }
+
+  const handleChangeServerPort = (e: ChangeEvent<HTMLInputElement>): void => {
+    setServerPort(e.target.value)
+  }
+
+  const handleApplyServer = (): void => {
+    // TODO: Apply server settings
+  }
+
+  const handleConnect = (): void => {
+    // TODO: Implement connection logic
+    setIsConnected(true)
+  }
+
+  const handleDisconnect = (): void => {
+    // TODO: Implement disconnection logic
+    setIsConnected(false)
   }
 
   const handleChangeBaseLatInput = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -191,7 +221,15 @@ const App = (): React.JSX.Element => {
             onTogglePickBase: handleTogglePickBase,
             apiKeyInput,
             onApiKeyInputChange: handleChangeApiKeyInput,
-            onApplyApiKey: handleApplyApiKey
+            onApplyApiKey: handleApplyApiKey,
+            serverHost,
+            serverPort,
+            onServerHostChange: handleChangeServerHost,
+            onServerPortChange: handleChangeServerPort,
+            onApplyServer: handleApplyServer,
+            isConnected,
+            onConnect: handleConnect,
+            onDisconnect: handleDisconnect
           }}
         />
       </Drawer>

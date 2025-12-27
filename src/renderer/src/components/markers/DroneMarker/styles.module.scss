@@ -23,12 +23,22 @@ $status-auto: vars.$color-danger;
   height: 36px;
   filter: none; // 그림자 제거 (100대 이상 시 겹침 방지)
 
+  // 기본 상태에서 shimmer 애니메이션 제거
+  &::after {
+    display: none;
+  }
+
   &:hover:not(.selected) {
     @extend %marker-hover;
   }
 
   &.selected {
     @extend %marker-selected;
+
+    // 선택된 상태에서만 shimmer 애니메이션 활성화
+    &::after {
+      display: block;
+    }
   }
 }
 

@@ -233,7 +233,7 @@ const DroneListSection = memo(
     return (
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h3>드론 목록</h3>
+          <h3>드론 목록 ({drones.length})</h3>
           <div className={styles.bulkActions}>
             <button
               className={`${styles.bulkButton} ${styles.pathButton} ${allPathsVisible ? styles.active : ''}`}

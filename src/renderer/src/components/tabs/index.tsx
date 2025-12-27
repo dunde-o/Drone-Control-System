@@ -17,6 +17,7 @@ const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.E
         onTogglePickBase={mainTabProps.onTogglePickBase}
         pickingLat={mainTabProps.pickingLat}
         pickingLng={mainTabProps.pickingLng}
+        onPanToBase={mainTabProps.onPanToBase}
       />
     ),
     server: <ServerSettingsTab />,

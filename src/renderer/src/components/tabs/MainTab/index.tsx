@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 
-import { Loader2, MapPinned, X } from 'lucide-react'
+import { Loader2, Locate, MapPinned, X } from 'lucide-react'
 
 import { useUpdateBasePosition } from '@renderer/hooks/mutations'
 import { useBasePosition, useConnectionStatus } from '@renderer/hooks/queries'
@@ -12,13 +12,15 @@ interface MainTabProps {
   onTogglePickBase: () => void
   pickingLat: string
   pickingLng: string
+  onPanToBase?: () => void
 }
 
 const MainTab = ({
   isPickingBase,
   onTogglePickBase,
   pickingLat,
-  pickingLng
+  pickingLng,
+  onPanToBase
 }: MainTabProps): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
   const { data: basePosition } = useBasePosition()
@@ -79,7 +81,17 @@ const MainTab = ({
       <h2>MAIN</h2>
 
       <div className={styles.section}>
-        <h3>Base 위치 설정</h3>
+        <div className={styles.sectionHeader}>
+          <h3>Base 위치 설정</h3>
+          <button
+            onClick={onPanToBase}
+            className={styles.panButton}
+            title="Base 위치로 이동"
+            disabled={!isBaseEnabled || !basePosition}
+          >
+            <Locate size={16} />
+          </button>
+        </div>
         {!isBaseEnabled && (
           <p className={styles.disabledHint}>서버가 연결되어야 Base 위치를 설정할 수 있습니다</p>
         )}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-import { APIProvider, Map, MapMouseEvent } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-maps'
 
 import { useApiKey, useBaseMovement, useBasePosition } from '@renderer/hooks/queries'
 import Drawer from '@renderer/components/Drawer'
@@ -11,6 +11,25 @@ import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
 
 import { DEFAULT_MAP_CENTER } from './constants'
+
+interface MapControllerProps {
+  onPanToBase: (panTo: (position: { lat: number; lng: number }) => void) => void
+}
+
+const MapController = ({ onPanToBase }: MapControllerProps): null => {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map) return
+
+    onPanToBase((position) => {
+      map.panTo(position)
+      map.setZoom(15)
+    })
+  }, [map, onPanToBase])
+
+  return null
+}
 
 const App = (): React.JSX.Element => {
   // UI state
@@ -26,6 +45,7 @@ const App = (): React.JSX.Element => {
   // Refs for closures
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
+  const panToRef = useRef<((position: { lat: number; lng: number }) => void) | null>(null)
 
   // React Query hooks
   const { apiKey } = useApiKey()
@@ -97,6 +117,19 @@ const App = (): React.JSX.Element => {
     setSelectedMarker(null)
   }, [])
 
+  const handleSetPanTo = useCallback(
+    (panTo: (position: { lat: number; lng: number }) => void): void => {
+      panToRef.current = panTo
+    },
+    []
+  )
+
+  const handlePanToBase = useCallback((): void => {
+    if (basePosition && panToRef.current) {
+      panToRef.current(basePosition)
+    }
+  }, [basePosition])
+
   const handleMapMouseMove = useCallback(
     (e: MapMouseEvent): void => {
       if (isPickingBase && e.detail.latLng) {
@@ -154,6 +187,7 @@ const App = (): React.JSX.Element => {
           />
         )}
         {baseMovement && <MovementPath movement={baseMovement} />}
+        <MapController onPanToBase={handleSetPanTo} />
       </Map>
 
       <MarkerInfoDrawer marker={selectedMarker} onClose={handleCloseMarkerInfo} />
@@ -170,7 +204,8 @@ const App = (): React.JSX.Element => {
             isPickingBase,
             onTogglePickBase: handleTogglePickBase,
             pickingLat,
-            pickingLng
+            pickingLng,
+            onPanToBase: handlePanToBase
           }}
         />
       </Drawer>

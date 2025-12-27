@@ -10,6 +10,43 @@
   margin-bottom: vars.$spacing-xxl;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: vars.$spacing-sm;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.panButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: vars.$border-radius-sm;
+  background-color: transparent;
+  color: vars.$color-primary;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(vars.$color-primary, 0.1);
+  }
+
+  &:disabled {
+    color: vars.$color-text-muted;
+    cursor: not-allowed;
+  }
+}
+
 .label {
   @extend %labelText;
 }

@@ -9,6 +9,7 @@ export interface MainTabProps {
   onTogglePickBase: () => void
   pickingLat: string
   pickingLng: string
+  onPanToBase?: () => void
 }
 
 export const TABS: TabConfig[] = [

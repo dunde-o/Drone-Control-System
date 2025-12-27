@@ -25,7 +25,11 @@ export default defineConfig(
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
+      ...eslintPluginReactRefresh.configs.vite.rules,
+      // Allow setState in effects for syncing external state to local input state
+      'react-hooks/set-state-in-effect': 'off',
+      // Allow re-exporting from index files
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }]
     }
   },
   eslintConfigPrettier

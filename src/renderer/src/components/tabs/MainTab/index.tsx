@@ -1,43 +1,78 @@
-import { ChangeEvent } from 'react'
+import { ChangeEvent, useEffect, useRef, useState } from 'react'
 
 import { Loader2, MapPinned, X } from 'lucide-react'
+
+import { useUpdateBasePosition } from '@renderer/hooks/mutations'
+import { useBasePosition, useConnectionStatus } from '@renderer/hooks/queries'
 
 import styles from './styles.module.scss'
 
 interface MainTabProps {
-  baseLat: string
-  baseLng: string
-  baseLatServer: string
-  baseLngServer: string
-  onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
-  onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
-  onApplyBase: () => void
   isPickingBase: boolean
   onTogglePickBase: () => void
-  isBaseEnabled: boolean
-  isBaseUpdating: boolean
+  pickingLat: string
+  pickingLng: string
 }
 
 const MainTab = ({
-  baseLat,
-  baseLng,
-  baseLatServer,
-  baseLngServer,
-  onBaseLatChange,
-  onBaseLngChange,
-  onApplyBase,
   isPickingBase,
   onTogglePickBase,
-  isBaseEnabled,
-  isBaseUpdating
+  pickingLat,
+  pickingLng
 }: MainTabProps): React.JSX.Element => {
+  const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
+  const { data: basePosition } = useBasePosition()
+  const updateBasePosition = useUpdateBasePosition()
+
+  const [baseLatInput, setBaseLatInput] = useState('')
+  const [baseLngInput, setBaseLngInput] = useState('')
+
+  // Track if user has modified inputs locally
+  const isPickingBaseRef = useRef(isPickingBase)
+
+  const isBaseEnabled = connectionStatus === 'connected'
+  const isBaseUpdating = updateBasePosition.isPending
+
+  // Sync inputs when server value changes (only if not picking)
+  useEffect(() => {
+    if (basePosition && !isPickingBaseRef.current) {
+      setBaseLatInput(String(basePosition.lat))
+      setBaseLngInput(String(basePosition.lng))
+    }
+  }, [basePosition])
+
+  // Update inputs when picking from map
+  useEffect(() => {
+    isPickingBaseRef.current = isPickingBase
+    if (isPickingBase && pickingLat && pickingLng) {
+      setBaseLatInput(pickingLat)
+      setBaseLngInput(pickingLng)
+    }
+  }, [isPickingBase, pickingLat, pickingLng])
+
+  const handleBaseLatChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setBaseLatInput(e.target.value)
+  }
+
+  const handleBaseLngChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setBaseLngInput(e.target.value)
+  }
+
+  const handleApplyBase = (): void => {
+    const lat = parseFloat(baseLatInput)
+    const lng = parseFloat(baseLngInput)
+    if (isNaN(lat) || isNaN(lng)) return
+
+    updateBasePosition.mutate({ lat, lng })
+  }
+
   const isInputDisabled = !isBaseEnabled || isBaseUpdating
+  const isUnchanged =
+    basePosition &&
+    baseLatInput === String(basePosition.lat) &&
+    baseLngInput === String(basePosition.lng)
   const isApplyDisabled =
-    !isBaseEnabled ||
-    isBaseUpdating ||
-    !baseLat ||
-    !baseLng ||
-    (baseLat === baseLatServer && baseLng === baseLngServer)
+    !isBaseEnabled || isBaseUpdating || !baseLatInput || !baseLngInput || !!isUnchanged
 
   return (
     <div className={styles.container}>
@@ -54,8 +89,8 @@ const MainTab = ({
             <input
               type="number"
               step="any"
-              value={baseLat}
-              onChange={onBaseLatChange}
+              value={baseLatInput}
+              onChange={handleBaseLatChange}
               placeholder={isBaseEnabled ? '37.5665' : '-'}
               className={styles.input}
               disabled={isInputDisabled}
@@ -66,8 +101,8 @@ const MainTab = ({
             <input
               type="number"
               step="any"
-              value={baseLng}
-              onChange={onBaseLngChange}
+              value={baseLngInput}
+              onChange={handleBaseLngChange}
               placeholder={isBaseEnabled ? '126.978' : '-'}
               className={styles.input}
               disabled={isInputDisabled}
@@ -75,7 +110,7 @@ const MainTab = ({
           </div>
         </div>
         <div className={styles.buttonGroup}>
-          <button onClick={onApplyBase} className={styles.button} disabled={isApplyDisabled}>
+          <button onClick={handleApplyBase} className={styles.button} disabled={isApplyDisabled}>
             {isBaseUpdating ? (
               <>
                 <Loader2 size={16} className={styles.spinner} />

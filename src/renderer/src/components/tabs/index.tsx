@@ -1,62 +1,26 @@
 import ApiSettingsTab from './ApiSettingsTab'
-import { TabProps } from './constants'
+import { MainTabProps } from './constants'
 import HelpTab from './HelpTab'
 import MainTab from './MainTab'
 import ServerSettingsTab from './ServerSettingsTab'
 
 interface TabContentProps {
   activeTabId: string
-  tabProps: TabProps
+  mainTabProps: MainTabProps
 }
 
-const TabContent = ({ activeTabId, tabProps }: TabContentProps): React.JSX.Element | null => {
+const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.Element | null => {
   const tabComponents: Record<string, React.JSX.Element> = {
     main: (
       <MainTab
-        baseLat={tabProps.baseLat}
-        baseLng={tabProps.baseLng}
-        baseLatServer={tabProps.baseLatServer}
-        baseLngServer={tabProps.baseLngServer}
-        onBaseLatChange={tabProps.onBaseLatChange}
-        onBaseLngChange={tabProps.onBaseLngChange}
-        onApplyBase={tabProps.onApplyBase}
-        isPickingBase={tabProps.isPickingBase}
-        onTogglePickBase={tabProps.onTogglePickBase}
-        isBaseEnabled={tabProps.isBaseEnabled}
-        isBaseUpdating={tabProps.isBaseUpdating}
+        isPickingBase={mainTabProps.isPickingBase}
+        onTogglePickBase={mainTabProps.onTogglePickBase}
+        pickingLat={mainTabProps.pickingLat}
+        pickingLng={mainTabProps.pickingLng}
       />
     ),
-    server: (
-      <ServerSettingsTab
-        serverHost={tabProps.serverHost}
-        serverPort={tabProps.serverPort}
-        onServerHostChange={tabProps.onServerHostChange}
-        onServerPortChange={tabProps.onServerPortChange}
-        isServerRunning={tabProps.isServerRunning}
-        connectionStatus={tabProps.connectionStatus}
-        onStartServer={tabProps.onStartServer}
-        onStopServer={tabProps.onStopServer}
-        showHeartbeatLog={tabProps.showHeartbeatLog}
-        onToggleHeartbeatLog={tabProps.onToggleHeartbeatLog}
-        baseMoveDuration={tabProps.baseMoveDuration}
-        baseMoveDurationServer={tabProps.baseMoveDurationServer}
-        onBaseMoveDurationChange={tabProps.onBaseMoveDurationChange}
-        onApplyBaseMoveDuration={tabProps.onApplyBaseMoveDuration}
-        isBaseMoveDurationUpdating={tabProps.isBaseMoveDurationUpdating}
-        heartbeatInterval={tabProps.heartbeatInterval}
-        heartbeatIntervalServer={tabProps.heartbeatIntervalServer}
-        onHeartbeatIntervalChange={tabProps.onHeartbeatIntervalChange}
-        onApplyHeartbeatInterval={tabProps.onApplyHeartbeatInterval}
-        isHeartbeatIntervalUpdating={tabProps.isHeartbeatIntervalUpdating}
-      />
-    ),
-    api: (
-      <ApiSettingsTab
-        apiKeyInput={tabProps.apiKeyInput}
-        onApiKeyInputChange={tabProps.onApiKeyInputChange}
-        onApplyApiKey={tabProps.onApplyApiKey}
-      />
-    ),
+    server: <ServerSettingsTab />,
+    api: <ApiSettingsTab />,
     help: <HelpTab />
   }
 

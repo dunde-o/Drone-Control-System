@@ -1,21 +1,26 @@
-import { ChangeEvent } from 'react'
+import { ChangeEvent, useState } from 'react'
+
+import { useApiKey } from '@renderer/hooks/queries'
 
 import styles from './styles.module.scss'
 
-interface ApiSettingsTabProps {
-  apiKeyInput: string
-  onApiKeyInputChange: (e: ChangeEvent<HTMLInputElement>) => void
-  onApplyApiKey: () => void
-}
+const ApiSettingsTab = (): React.JSX.Element => {
+  const { apiKey, setApiKey } = useApiKey()
+  const [apiKeyInput, setApiKeyInput] = useState(apiKey)
 
-const ApiSettingsTab = ({
-  apiKeyInput,
-  onApiKeyInputChange,
-  onApplyApiKey
-}: ApiSettingsTabProps): React.JSX.Element => {
+  const handleApiKeyInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setApiKeyInput(e.target.value)
+  }
+
+  const handleApplyApiKey = (): void => {
+    setApiKey(apiKeyInput)
+  }
+
   const handleOpenCloudConsole = (): void => {
     window.open('https://console.cloud.google.com/google/maps-apis', '_blank')
   }
+
+  const isUnchanged = apiKeyInput === apiKey
 
   return (
     <div className={styles.container}>
@@ -27,11 +32,11 @@ const ApiSettingsTab = ({
           <input
             type="password"
             value={apiKeyInput}
-            onChange={onApiKeyInputChange}
+            onChange={handleApiKeyInputChange}
             placeholder="API 키를 입력하세요"
             className={styles.input}
           />
-          <button onClick={onApplyApiKey} className={styles.button}>
+          <button onClick={handleApplyApiKey} className={styles.button} disabled={isUnchanged}>
             적용
           </button>
         </div>

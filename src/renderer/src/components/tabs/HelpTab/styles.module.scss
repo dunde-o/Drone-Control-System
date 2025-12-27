@@ -1,9 +1,43 @@
+@use 'sass:color';
 @use '~styles/variables' as vars;
 @use '~styles/mixins' as *;
 @use '~components/tabs/common' as *;
 
 .container {
   @extend %tabContainer;
+}
+
+.accordionSection {
+  margin-bottom: vars.$spacing-sm;
+  border: 1px solid vars.$color-border;
+  border-radius: vars.$border-radius-sm;
+  overflow: hidden;
+}
+
+.accordionHeader {
+  @include menu-text;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: vars.$spacing-xs;
+  padding: vars.$spacing-sm vars.$spacing-md;
+  background-color: vars.$color-background-box;
+  border: none;
+  cursor: pointer;
+  color: vars.$color-text-primary;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: color.adjust(vars.$color-background-box, $lightness: -5%);
+  }
+}
+
+.accordionContent {
+  padding: vars.$spacing-md;
+  background-color: vars.$color-background;
+  border-top: 1px solid vars.$color-border;
 }
 
 .shortcutList {
@@ -17,6 +51,10 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: vars.$spacing-sm;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .shortcutKey {
@@ -24,4 +62,55 @@
   padding: 2px 6px;
   border-radius: vars.$border-radius-sm;
   font-family: monospace;
+}
+
+.helpContent {
+  @include menu-text;
+  color: vars.$color-text-secondary;
+  font-size: vars.$font-size-sm;
+  line-height: 1.6;
+
+  h4 {
+    color: vars.$color-text-primary;
+    font-size: vars.$font-size-md;
+    margin: vars.$spacing-md 0 vars.$spacing-xs;
+    font-weight: 500;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  p {
+    margin: vars.$spacing-xs 0;
+  }
+
+  ul,
+  ol {
+    margin: vars.$spacing-xs 0;
+    padding-left: vars.$spacing-lg;
+  }
+
+  li {
+    margin-bottom: vars.$spacing-xs;
+  }
+
+  code {
+    background-color: vars.$color-background-box;
+    padding: 1px 4px;
+    border-radius: vars.$border-radius-sm;
+    font-family: monospace;
+    font-size: 0.9em;
+  }
+
+  strong {
+    color: vars.$color-text-primary;
+  }
+}
+
+.hint {
+  color: vars.$color-text-hint;
+  font-style: italic;
+  font-size: vars.$font-size-xs;
+  margin-top: vars.$spacing-sm;
 }

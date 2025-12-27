@@ -136,8 +136,8 @@ app.whenReady().then(() => {
 
   createWindow()
 
-  // Register global shortcuts for Ctrl+1,2,3
-  for (let i = 1; i <= 3; i++) {
+  // Register global shortcuts for Ctrl+1,2,3,4
+  for (let i = 1; i <= 4; i++) {
     globalShortcut.register(`CommandOrControl+${i}`, () => {
       if (mainWindow) {
         mainWindow.webContents.send('switch-tab', i)

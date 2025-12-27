@@ -11,11 +11,13 @@ dotenv.config()
 
 let mainWindow: BrowserWindow | null = null
 let droneServer: DroneServer | null = null
+let isQuitting = false
 
-// Default base position from environment variables
+// Default base position (한양대학교 ERICA)
+// Environment variables override these defaults
 const DEFAULT_BASE_POSITION = {
-  lat: parseFloat(process.env.BASE_POSITION_LAT || '0'),
-  lng: parseFloat(process.env.BASE_POSITION_LNG || '0')
+  lat: parseFloat(process.env.BASE_POSITION_LAT || '37.2939'),
+  lng: parseFloat(process.env.BASE_POSITION_LNG || '126.8349')
 }
 
 function createWindow(): void {
@@ -98,15 +100,21 @@ app.whenReady().then(async () => {
       })
 
       droneServer.on('clientConnected', (count) => {
-        mainWindow?.webContents.send('server:client-count', count)
+        if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('server:client-count', count)
+        }
       })
 
       droneServer.on('clientDisconnected', (count) => {
-        mainWindow?.webContents.send('server:client-count', count)
+        if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('server:client-count', count)
+        }
       })
 
       droneServer.on('configUpdate', (payload) => {
-        mainWindow?.webContents.send('server:config-updated', payload)
+        if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('server:config-updated', payload)
+        }
       })
 
       await droneServer.start()
@@ -163,13 +171,20 @@ app.whenReady().then(async () => {
   })
 })
 
+// Handle app closing - set flag before cleanup
+app.on('before-quit', () => {
+  isQuitting = true
+})
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', async () => {
-  // Stop server before quitting
+app.on('window-all-closed', () => {
+  isQuitting = true
+
+  // Stop server before quitting (fire and forget)
   if (droneServer?.isRunning()) {
-    await droneServer.stop()
+    droneServer.stop().catch(() => {})
   }
 
   if (process.platform !== 'darwin') {

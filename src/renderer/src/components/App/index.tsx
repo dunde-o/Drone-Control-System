@@ -27,6 +27,14 @@ const App = (): React.JSX.Element => {
     drawerOpenRef.current = drawerOpen
   }, [activeTab, drawerOpen])
 
+  useEffect(() => {
+    if (isPickingBase) {
+      document.body.classList.add('picking-base')
+    } else {
+      document.body.classList.remove('picking-base')
+    }
+  }, [isPickingBase])
+
   const handleToggleDrawerByTab = (tabId: string): (() => void) => {
     return (): void => {
       if (activeTab === tabId && drawerOpen) {
@@ -127,7 +135,7 @@ const App = (): React.JSX.Element => {
   return (
     <APIProvider apiKey={apiKey}>
       <Map
-        style={{ width: '100%', height: '100%', cursor: isPickingBase ? 'crosshair' : 'default' }}
+        style={{ width: '100%', height: '100%' }}
         defaultCenter={DEFAULT_BASE_POSITION}
         defaultZoom={12}
         gestureHandling="greedy"

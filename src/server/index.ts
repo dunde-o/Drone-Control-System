@@ -685,6 +685,63 @@ class DroneServer extends EventEmitter {
         break
       }
 
+      case 'drone:allTakeoff': {
+        // 모든 idle 상태 드론 이륙
+        let count = 0
+        this.drones.forEach((drone) => {
+          if (drone.status === 'idle') {
+            drone.status = 'ascending'
+            count++
+          }
+        })
+        console.log(`[Server] All takeoff: ${count} drones ascending`)
+
+        this.broadcast({
+          type: 'drones:update',
+          payload: { drones: this.getDronesArray() }
+        })
+        break
+      }
+
+      case 'drone:allReturnToBase': {
+        // 모든 공중 상태 드론 복귀
+        let count = 0
+        this.drones.forEach((drone) => {
+          if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
+            drone.status = 'returning'
+            drone.waypoints = [{ ...this.basePosition }]
+            count++
+          }
+        })
+        console.log(`[Server] All return to base: ${count} drones returning`)
+
+        this.broadcast({
+          type: 'drones:update',
+          payload: { drones: this.getDronesArray() }
+        })
+        break
+      }
+
+      case 'drone:allRandomMove': {
+        // 모든 공중 상태 드론 랜덤 위치로 이동
+        let count = 0
+        this.drones.forEach((drone) => {
+          if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
+            const randomPos = this.generateRandomPosition()
+            drone.status = 'moving'
+            drone.waypoints = [randomPos]
+            count++
+          }
+        })
+        console.log(`[Server] All random move: ${count} drones moving`)
+
+        this.broadcast({
+          type: 'drones:update',
+          payload: { drones: this.getDronesArray() }
+        })
+        break
+      }
+
       case 'config:update':
         this.emit('configUpdate', message.payload)
         this.broadcast({
@@ -780,6 +837,26 @@ class DroneServer extends EventEmitter {
     }
 
     console.log(`[Server] Drone count updated: ${this.drones.size}`)
+  }
+
+  // 베이스 기준 5km ~ 10km 반경 내 랜덤 좌표 생성
+  private generateRandomPosition(): Position {
+    const minDistance = 5000
+    const maxDistance = 10000
+    const distance = minDistance + Math.random() * (maxDistance - minDistance)
+
+    const bearing = Math.random() * 360
+
+    const earthRadius = 6371000
+    const latOffset = (distance * Math.cos((bearing * Math.PI) / 180)) / earthRadius
+    const lngOffset =
+      (distance * Math.sin((bearing * Math.PI) / 180)) /
+      (earthRadius * Math.cos((this.basePosition.lat * Math.PI) / 180))
+
+    return {
+      lat: this.basePosition.lat + (latOffset * 180) / Math.PI,
+      lng: this.basePosition.lng + (lngOffset * 180) / Math.PI
+    }
   }
 }
 

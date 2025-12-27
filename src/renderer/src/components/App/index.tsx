@@ -303,17 +303,6 @@ const App = (): React.JSX.Element => {
     [sendMessage]
   )
 
-  // 직접 이륙 (확인 다이얼로그 없이) - bulk 액션용
-  const handleDirectTakeoff = useCallback(
-    (droneId: string): void => {
-      sendMessage({
-        type: 'drone:takeoff',
-        payload: { droneId }
-      })
-    },
-    [sendMessage]
-  )
-
   // 확인 팝업에서 확인 클릭
   const handleConfirmAction = useCallback((): void => {
     // Bulk 액션 처리
@@ -334,29 +323,24 @@ const App = (): React.JSX.Element => {
     setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
   }, [])
 
-  // Bulk 액션 확인 다이얼로그 표시
+  // Bulk 액션 확인 다이얼로그 표시 (서버 전체 명령 호출)
   const handleShowBulkConfirmDialog = useCallback(
-    (type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove', onConfirm: () => void): void => {
+    (type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove'): void => {
       setConfirmDialog({
         isOpen: true,
         type,
         droneId: null,
         droneName: null,
-        onBulkConfirm: onConfirm
-      })
-    },
-    []
-  )
-
-  // 드론 랜덤 이동 명령 (개별)
-  const handleRandomMove = useCallback(
-    (droneId: string, lat: number, lng: number): void => {
-      sendMessage({
-        type: 'drone:move',
-        payload: {
-          droneId,
-          waypoints: [{ lat, lng }],
-          append: false
+        onBulkConfirm: () => {
+          // 서버에 전체 명령 전송
+          sendMessage({
+            type:
+              type === 'allTakeoff'
+                ? 'drone:allTakeoff'
+                : type === 'allReturnToBase'
+                  ? 'drone:allReturnToBase'
+                  : 'drone:allRandomMove'
+          })
         }
       })
     },
@@ -578,8 +562,6 @@ const App = (): React.JSX.Element => {
             onLand: handleLandRequest,
             onReturnToBase: handleReturnToBase,
             onLocateDrone: handleLocateDrone,
-            onRandomMove: handleRandomMove,
-            onDirectTakeoff: handleDirectTakeoff,
             onShowConfirmDialog: handleShowBulkConfirmDialog,
             pathVisibility,
             onTogglePath: handleTogglePath,

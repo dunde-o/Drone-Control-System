@@ -186,7 +186,6 @@ const DroneCard = memo(DroneCardComponent, (prevProps, nextProps) => {
 
 // 드론 리스트 섹션 (별도 컴포넌트로 분리하여 useDrones 구독을 격리)
 interface DroneListSectionProps {
-  basePosition: { lat: number; lng: number } | undefined
   pathVisibility: Record<string, boolean>
   onTakeoff: (droneId: string, droneName: string) => void
   onLand: (droneId: string, droneName: string) => void
@@ -194,17 +193,11 @@ interface DroneListSectionProps {
   onLocate: (droneId: string) => void
   onTogglePath: (droneId: string) => void
   onToggleAllPaths: (show: boolean) => void
-  onRandomMove?: (droneId: string, lat: number, lng: number) => void
-  onDirectTakeoff?: (droneId: string) => void
-  onShowConfirmDialog?: (
-    type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
-    onConfirm: () => void
-  ) => void
+  onShowConfirmDialog?: (type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove') => void
 }
 
 const DroneListSection = memo(
   ({
-    basePosition,
     pathVisibility,
     onTakeoff,
     onLand,
@@ -212,8 +205,6 @@ const DroneListSection = memo(
     onLocate,
     onTogglePath,
     onToggleAllPaths,
-    onRandomMove,
-    onDirectTakeoff,
     onShowConfirmDialog
   }: DroneListSectionProps): React.JSX.Element | null => {
     const { data: drones = [] } = useDrones()
@@ -222,36 +213,16 @@ const DroneListSection = memo(
     const allPathsVisible = drones.length > 0 && drones.every((d) => pathVisibility[d.id])
 
     const handleAllRandomMove = useCallback((): void => {
-      if (!basePosition) return
-      onShowConfirmDialog?.('allRandomMove', () => {
-        drones.forEach((drone) => {
-          if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
-            const randomPos = generateRandomPosition(basePosition.lat, basePosition.lng)
-            onRandomMove?.(drone.id, randomPos.lat, randomPos.lng)
-          }
-        })
-      })
-    }, [basePosition, drones, onRandomMove, onShowConfirmDialog])
+      onShowConfirmDialog?.('allRandomMove')
+    }, [onShowConfirmDialog])
 
     const handleAllTakeoff = useCallback((): void => {
-      onShowConfirmDialog?.('allTakeoff', () => {
-        drones.forEach((drone) => {
-          if (drone.status === 'idle') {
-            onDirectTakeoff?.(drone.id)
-          }
-        })
-      })
-    }, [drones, onDirectTakeoff, onShowConfirmDialog])
+      onShowConfirmDialog?.('allTakeoff')
+    }, [onShowConfirmDialog])
 
     const handleAllReturnToBase = useCallback((): void => {
-      onShowConfirmDialog?.('allReturnToBase', () => {
-        drones.forEach((drone) => {
-          if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
-            onReturnToBase?.(drone.id)
-          }
-        })
-      })
-    }, [drones, onReturnToBase, onShowConfirmDialog])
+      onShowConfirmDialog?.('allReturnToBase')
+    }, [onShowConfirmDialog])
 
     const handleToggleAllPaths = useCallback((): void => {
       onToggleAllPaths(!allPathsVisible)
@@ -274,7 +245,6 @@ const DroneListSection = memo(
             <button
               className={`${styles.bulkButton} ${styles.randomButton}`}
               onClick={handleAllRandomMove}
-              disabled={!basePosition}
               title="전체 랜덤 이동"
             >
               <ShuffleIcon />
@@ -316,41 +286,13 @@ const DroneListSection = memo(
 
 DroneListSection.displayName = 'DroneListSection'
 
-// 베이스 기준 5km ~ 10km 반경 내 랜덤 좌표 생성
-const generateRandomPosition = (baseLat: number, baseLng: number): { lat: number; lng: number } => {
-  // 5km ~ 10km 사이 랜덤 거리 (미터)
-  const minDistance = 5000
-  const maxDistance = 10000
-  const distance = minDistance + Math.random() * (maxDistance - minDistance)
-
-  // 랜덤 방향 (0 ~ 360도)
-  const bearing = Math.random() * 360
-
-  // 위도/경도 변환 (근사값)
-  const earthRadius = 6371000 // 지구 반지름 (미터)
-  const latOffset = (distance * Math.cos((bearing * Math.PI) / 180)) / earthRadius
-  const lngOffset =
-    (distance * Math.sin((bearing * Math.PI) / 180)) /
-    (earthRadius * Math.cos((baseLat * Math.PI) / 180))
-
-  return {
-    lat: baseLat + (latOffset * 180) / Math.PI,
-    lng: baseLng + (lngOffset * 180) / Math.PI
-  }
-}
-
 interface MainTabProps {
   onPanToBase?: () => void
   onTakeoff?: (droneId: string, droneName: string) => void
   onLand?: (droneId: string, droneName: string) => void
   onReturnToBase?: (droneId: string) => void
   onLocateDrone?: (droneId: string) => void
-  onRandomMove?: (droneId: string, lat: number, lng: number) => void
-  onDirectTakeoff?: (droneId: string) => void
-  onShowConfirmDialog?: (
-    type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
-    onConfirm: () => void
-  ) => void
+  onShowConfirmDialog?: (type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove') => void
   pathVisibility?: Record<string, boolean>
   onTogglePath?: (droneId: string) => void
   onToggleAllPaths?: (show: boolean) => void
@@ -362,8 +304,6 @@ const MainTab = ({
   onLand,
   onReturnToBase,
   onLocateDrone,
-  onRandomMove,
-  onDirectTakeoff,
   onShowConfirmDialog,
   pathVisibility = {},
   onTogglePath,
@@ -434,7 +374,6 @@ const MainTab = ({
       </div>
 
       <DroneListSection
-        basePosition={basePosition ?? undefined}
         pathVisibility={pathVisibility}
         onTakeoff={handleDroneTakeoff}
         onLand={handleDroneLand}
@@ -442,8 +381,6 @@ const MainTab = ({
         onLocate={handleDroneLocate}
         onTogglePath={handleTogglePath}
         onToggleAllPaths={handleToggleAllPaths}
-        onRandomMove={onRandomMove}
-        onDirectTakeoff={onDirectTakeoff}
         onShowConfirmDialog={onShowConfirmDialog}
       />
     </div>

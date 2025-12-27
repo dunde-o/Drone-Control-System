@@ -361,3 +361,51 @@
     color: vars.$color-text-primary;
   }
 }
+
+// Path toggle button (individual drone)
+.pathToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid vars.$color-border;
+  border-radius: vars.$border-radius-sm;
+  background-color: transparent;
+  color: vars.$color-text-muted;
+  cursor: pointer;
+  transition:
+    background-color vars.$transition-fast,
+    border-color vars.$transition-fast,
+    color vars.$transition-fast;
+
+  &:hover {
+    border-color: vars.$color-primary;
+    color: vars.$color-primary;
+  }
+
+  &.active {
+    background-color: rgba(vars.$color-primary, 0.15);
+    border-color: vars.$color-primary;
+    color: vars.$color-primary;
+  }
+}
+
+// Path button (bulk action)
+.pathButton {
+  background-color: vars.$color-text-muted;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background-color: vars.$color-text-secondary;
+  }
+
+  &.active {
+    background-color: vars.$color-primary;
+
+    &:hover:not(:disabled) {
+      background-color: vars.$color-primary-hover;
+    }
+  }
+}

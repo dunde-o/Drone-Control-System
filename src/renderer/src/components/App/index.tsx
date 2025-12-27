@@ -103,6 +103,9 @@ const App = (): React.JSX.Element => {
     onBulkConfirm?: () => void
   }>({ isOpen: false, type: null, droneId: null, droneName: null })
 
+  // Path visibility state (드론별 경로 표시 여부)
+  const [pathVisibility, setPathVisibility] = useState<Record<string, boolean>>({})
+
   // Refs for closures
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
@@ -367,6 +370,26 @@ const App = (): React.JSX.Element => {
     [sendMessage]
   )
 
+  // 개별 드론 경로 표시 토글
+  const handleTogglePath = useCallback((droneId: string): void => {
+    setPathVisibility((prev) => ({
+      ...prev,
+      [droneId]: !prev[droneId]
+    }))
+  }, [])
+
+  // 전체 드론 경로 표시 토글
+  const handleToggleAllPaths = useCallback(
+    (show: boolean): void => {
+      const newVisibility: Record<string, boolean> = {}
+      drones.forEach((drone) => {
+        newVisibility[drone.id] = show
+      })
+      setPathVisibility(newVisibility)
+    },
+    [drones]
+  )
+
   // 맵 우클릭으로 드론 이동 명령
   const handleMapContextMenu = useCallback(
     (e: MouseEvent): void => {
@@ -467,9 +490,19 @@ const App = (): React.JSX.Element => {
           />
         ))}
         {baseMovement && <MovementPath movement={baseMovement} />}
-        {selectedDrone && selectedDrone.waypoints.length > 0 && (
-          <DronePath drone={selectedDrone} />
-        )}
+        {/* 선택된 드론의 경로 (항상 표시) */}
+        {selectedDrone && selectedDrone.waypoints.length > 0 && <DronePath drone={selectedDrone} />}
+        {/* pathVisibility로 활성화된 드론들의 경로 (선택되지 않은 드론만) */}
+        {drones
+          .filter(
+            (drone) =>
+              pathVisibility[drone.id] &&
+              drone.id !== selectedDrone?.id &&
+              drone.waypoints.length > 0
+          )
+          .map((drone) => (
+            <DronePath key={drone.id} drone={drone} />
+          ))}
         <MapController onPanToBase={handleSetPanTo} onDroneMove={handleDroneMove} />
       </Map>
 
@@ -546,7 +579,10 @@ const App = (): React.JSX.Element => {
             onLocateDrone: handleLocateDrone,
             onRandomMove: handleRandomMove,
             onDirectTakeoff: handleDirectTakeoff,
-            onShowConfirmDialog: handleShowBulkConfirmDialog
+            onShowConfirmDialog: handleShowBulkConfirmDialog,
+            pathVisibility,
+            onTogglePath: handleTogglePath,
+            onToggleAllPaths: handleToggleAllPaths
           }}
         />
       </Drawer>

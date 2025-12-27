@@ -20,6 +20,9 @@ export interface MainTabProps {
     type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
     onConfirm: () => void
   ) => void
+  pathVisibility?: Record<string, boolean>
+  onTogglePath?: (droneId: string) => void
+  onToggleAllPaths?: (show: boolean) => void
 }
 
 export const TABS: TabConfig[] = [

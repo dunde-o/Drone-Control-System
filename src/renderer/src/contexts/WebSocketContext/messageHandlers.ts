@@ -237,8 +237,34 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       console.info('[Client] Drones update:', message.payload)
     }
     if (message.payload) {
-      const { drones } = message.payload
-      queryClient.setQueryData<Drone[]>(queryKeys.drones.list(), drones)
+      const { drones: newDrones } = message.payload
+      queryClient.setQueryData<Drone[]>(queryKeys.drones.list(), (prev) => {
+        if (!prev) return newDrones
+
+        // 변경된 드론이 있는지 확인
+        let hasChanges = false
+        const updatedDrones = prev.map((prevDrone) => {
+          const newDrone = newDrones.find((d) => d.id === prevDrone.id)
+          if (!newDrone) return prevDrone
+
+          // 변경 감지: 위치, 상태, 배터리, 고도 비교
+          const changed =
+            prevDrone.position.lat !== newDrone.position.lat ||
+            prevDrone.position.lng !== newDrone.position.lng ||
+            prevDrone.status !== newDrone.status ||
+            prevDrone.battery !== newDrone.battery ||
+            prevDrone.altitude !== newDrone.altitude
+
+          if (changed) {
+            hasChanges = true
+            return newDrone
+          }
+          return prevDrone
+        })
+
+        // 변경이 없으면 이전 배열 참조 유지 (리렌더링 방지)
+        return hasChanges ? updatedDrones : prev
+      })
     }
   }
 

@@ -8,8 +8,7 @@ interface DronePathProps {
 }
 
 // 위치 비교 함수
-const positionsEqual = (a: Position, b: Position): boolean =>
-  a.lat === b.lat && a.lng === b.lng
+const positionsEqual = (a: Position, b: Position): boolean => a.lat === b.lat && a.lng === b.lng
 
 // waypoints 배열 비교 함수
 const waypointsEqual = (a: Position[], b: Position[]): boolean => {

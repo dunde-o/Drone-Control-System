@@ -112,9 +112,13 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
         markerRef.current.map = null
         markerRef.current = null
       }
-      if (rootRef.current) {
-        rootRef.current.unmount()
+      // React 렌더링 중 unmount 호출 시 race condition 방지를 위해 지연 실행
+      const rootToUnmount = rootRef.current
+      if (rootToUnmount) {
         rootRef.current = null
+        setTimeout(() => {
+          rootToUnmount.unmount()
+        }, 0)
       }
       contentRef.current = null
     }

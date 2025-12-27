@@ -25,6 +25,9 @@ const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.E
         onRandomMove={mainTabProps.onRandomMove}
         onDirectTakeoff={mainTabProps.onDirectTakeoff}
         onShowConfirmDialog={mainTabProps.onShowConfirmDialog}
+        pathVisibility={mainTabProps.pathVisibility}
+        onTogglePath={mainTabProps.onTogglePath}
+        onToggleAllPaths={mainTabProps.onToggleAllPaths}
       />
     ),
     server: <ServerSettingsTab />,

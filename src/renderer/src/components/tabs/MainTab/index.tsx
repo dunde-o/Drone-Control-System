@@ -1,7 +1,6 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react'
+import { ChangeEvent, memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import {
-  ArrowUpFromLine,
   BatteryFull,
   BatteryLow,
   BatteryMedium,
@@ -13,6 +12,7 @@ import {
   MapPinned,
   PlaneLanding,
   PlaneTakeoff,
+  Route,
   Shuffle,
   X
 } from 'lucide-react'
@@ -25,10 +25,12 @@ import styles from './styles.module.scss'
 
 interface DroneCardProps {
   drone: Drone
-  onTakeoff: () => void
-  onLand: () => void
-  onReturnToBase: () => void
-  onLocate: () => void
+  showPath: boolean
+  onTakeoff: (droneId: string) => void
+  onLand: (droneId: string) => void
+  onReturnToBase: (droneId: string) => void
+  onLocate: (droneId: string) => void
+  onTogglePath: (droneId: string) => void
 }
 
 // 지상 대기 상태 (이륙 버튼 표시)
@@ -67,12 +69,14 @@ const getBatteryColorClass = (battery: number): string => {
   return 'batteryGood'
 }
 
-const DroneCard = ({
+const DroneCardComponent = ({
   drone,
+  showPath,
   onTakeoff,
   onLand,
   onReturnToBase,
-  onLocate
+  onLocate,
+  onTogglePath
 }: DroneCardProps): React.JSX.Element => {
   const statusConfig = STATUS_CONFIG[drone.status] || {
     label: drone.status,
@@ -85,10 +89,22 @@ const DroneCard = ({
 
   const handleTakeoffLand = (): void => {
     if (isGroundStatus(drone.status)) {
-      onTakeoff()
+      onTakeoff(drone.id)
     } else if (isAirStatus(drone.status)) {
-      onLand()
+      onLand(drone.id)
     }
+  }
+
+  const handleLocate = (): void => {
+    onLocate(drone.id)
+  }
+
+  const handleReturnToBase = (): void => {
+    onReturnToBase(drone.id)
+  }
+
+  const handleTogglePath = (): void => {
+    onTogglePath(drone.id)
   }
 
   return (
@@ -106,14 +122,17 @@ const DroneCard = ({
           {getBatteryIcon(drone.battery)}
           <span>{drone.battery}%</span>
         </div>
-        <div className={styles.droneAltitude}>
-          <ArrowUpFromLine size={14} />
-          <span>{drone.altitude.toFixed(1)}m</span>
-        </div>
+        <button
+          className={`${styles.pathToggle} ${showPath ? styles.active : ''}`}
+          onClick={handleTogglePath}
+          title={showPath ? '경로 숨기기' : '경로 보기'}
+        >
+          <Route size={14} />
+        </button>
         <div className={styles.droneActions}>
           <button
             className={`${styles.droneActionButton} ${styles.locateButton}`}
-            onClick={onLocate}
+            onClick={handleLocate}
             title="위치 보기"
           >
             <Crosshair size={14} />
@@ -128,7 +147,7 @@ const DroneCard = ({
           </button>
           <button
             className={`${styles.droneActionButton} ${styles.returnButton}`}
-            onClick={onReturnToBase}
+            onClick={handleReturnToBase}
             disabled={!canReturnToBase}
             title="복귀"
           >
@@ -140,11 +159,153 @@ const DroneCard = ({
   )
 }
 
+// 드론 데이터가 변경될 때만 리렌더링 (위치, 고도는 무시)
+const DroneCard = memo(DroneCardComponent, (prevProps, nextProps) => {
+  const prev = prevProps.drone
+  const next = nextProps.drone
+  return (
+    prev.id === next.id &&
+    prev.status === next.status &&
+    prev.battery === next.battery &&
+    prev.name === next.name &&
+    prevProps.showPath === nextProps.showPath
+  )
+})
+
+// 드론 리스트 섹션 (별도 컴포넌트로 분리하여 useDrones 구독을 격리)
+interface DroneListSectionProps {
+  basePosition: { lat: number; lng: number } | undefined
+  pathVisibility: Record<string, boolean>
+  onTakeoff: (droneId: string) => void
+  onLand: (droneId: string) => void
+  onReturnToBase: (droneId: string) => void
+  onLocate: (droneId: string) => void
+  onTogglePath: (droneId: string) => void
+  onToggleAllPaths: (show: boolean) => void
+  onRandomMove?: (droneId: string, lat: number, lng: number) => void
+  onDirectTakeoff?: (droneId: string) => void
+  onShowConfirmDialog?: (
+    type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
+    onConfirm: () => void
+  ) => void
+}
+
+const DroneListSection = memo(
+  ({
+    basePosition,
+    pathVisibility,
+    onTakeoff,
+    onLand,
+    onReturnToBase,
+    onLocate,
+    onTogglePath,
+    onToggleAllPaths,
+    onRandomMove,
+    onDirectTakeoff,
+    onShowConfirmDialog
+  }: DroneListSectionProps): React.JSX.Element | null => {
+    const { data: drones = [] } = useDrones()
+
+    // 전체 경로 표시 상태 계산
+    const allPathsVisible = drones.length > 0 && drones.every((d) => pathVisibility[d.id])
+
+    const handleAllRandomMove = useCallback((): void => {
+      if (!basePosition) return
+      onShowConfirmDialog?.('allRandomMove', () => {
+        drones.forEach((drone) => {
+          if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
+            const randomPos = generateRandomPosition(basePosition.lat, basePosition.lng)
+            onRandomMove?.(drone.id, randomPos.lat, randomPos.lng)
+          }
+        })
+      })
+    }, [basePosition, drones, onRandomMove, onShowConfirmDialog])
+
+    const handleAllTakeoff = useCallback((): void => {
+      onShowConfirmDialog?.('allTakeoff', () => {
+        drones.forEach((drone) => {
+          if (drone.status === 'idle') {
+            onDirectTakeoff?.(drone.id)
+          }
+        })
+      })
+    }, [drones, onDirectTakeoff, onShowConfirmDialog])
+
+    const handleAllReturnToBase = useCallback((): void => {
+      onShowConfirmDialog?.('allReturnToBase', () => {
+        drones.forEach((drone) => {
+          if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
+            onReturnToBase?.(drone.id)
+          }
+        })
+      })
+    }, [drones, onReturnToBase, onShowConfirmDialog])
+
+    const handleToggleAllPaths = useCallback((): void => {
+      onToggleAllPaths(!allPathsVisible)
+    }, [allPathsVisible, onToggleAllPaths])
+
+    if (drones.length === 0) return null
+
+    return (
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3>드론 목록</h3>
+          <div className={styles.bulkActions}>
+            <button
+              className={`${styles.bulkButton} ${styles.pathButton} ${allPathsVisible ? styles.active : ''}`}
+              onClick={handleToggleAllPaths}
+              title={allPathsVisible ? '전체 경로 숨기기' : '전체 경로 보기'}
+            >
+              <Route size={14} />
+            </button>
+            <button
+              className={`${styles.bulkButton} ${styles.randomButton}`}
+              onClick={handleAllRandomMove}
+              disabled={!basePosition}
+              title="전체 랜덤 이동"
+            >
+              <Shuffle size={14} />
+            </button>
+            <button
+              className={`${styles.bulkButton} ${styles.takeoffButton}`}
+              onClick={handleAllTakeoff}
+              title="전체 이륙"
+            >
+              <PlaneTakeoff size={14} />
+            </button>
+            <button
+              className={`${styles.bulkButton} ${styles.returnButton}`}
+              onClick={handleAllReturnToBase}
+              title="전체 복귀"
+            >
+              <Home size={14} />
+            </button>
+          </div>
+        </div>
+        <div className={styles.droneList}>
+          {drones.map((drone: Drone) => (
+            <DroneCard
+              key={drone.id}
+              drone={drone}
+              showPath={pathVisibility[drone.id] ?? false}
+              onTakeoff={onTakeoff}
+              onLand={onLand}
+              onTogglePath={onTogglePath}
+              onReturnToBase={onReturnToBase}
+              onLocate={onLocate}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+)
+
+DroneListSection.displayName = 'DroneListSection'
+
 // 베이스 기준 5km ~ 10km 반경 내 랜덤 좌표 생성
-const generateRandomPosition = (
-  baseLat: number,
-  baseLng: number
-): { lat: number; lng: number } => {
+const generateRandomPosition = (baseLat: number, baseLng: number): { lat: number; lng: number } => {
   // 5km ~ 10km 사이 랜덤 거리 (미터)
   const minDistance = 5000
   const maxDistance = 10000
@@ -182,6 +343,9 @@ interface MainTabProps {
     type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
     onConfirm: () => void
   ) => void
+  pathVisibility?: Record<string, boolean>
+  onTogglePath?: (droneId: string) => void
+  onToggleAllPaths?: (show: boolean) => void
 }
 
 const MainTab = ({
@@ -196,48 +360,60 @@ const MainTab = ({
   onLocateDrone,
   onRandomMove,
   onDirectTakeoff,
-  onShowConfirmDialog
+  onShowConfirmDialog,
+  pathVisibility = {},
+  onTogglePath,
+  onToggleAllPaths
 }: MainTabProps): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
   const { data: basePosition } = useBasePosition()
-  const { data: drones = [] } = useDrones()
   const updateBasePosition = useUpdateBasePosition()
 
   const [baseLatInput, setBaseLatInput] = useState('')
   const [baseLngInput, setBaseLngInput] = useState('')
 
-  // Bulk 액션 핸들러
-  const handleAllRandomMove = (): void => {
-    if (!basePosition) return
-    onShowConfirmDialog?.('allRandomMove', () => {
-      drones.forEach((drone) => {
-        if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
-          const randomPos = generateRandomPosition(basePosition.lat, basePosition.lng)
-          onRandomMove?.(drone.id, randomPos.lat, randomPos.lng)
-        }
-      })
-    })
-  }
+  // 안정적인 콜백 참조 (DroneListSection에 전달)
+  const handleDroneTakeoff = useCallback(
+    (droneId: string): void => {
+      onTakeoff?.(droneId)
+    },
+    [onTakeoff]
+  )
 
-  const handleAllTakeoff = (): void => {
-    onShowConfirmDialog?.('allTakeoff', () => {
-      drones.forEach((drone) => {
-        if (drone.status === 'idle') {
-          onDirectTakeoff?.(drone.id)
-        }
-      })
-    })
-  }
+  const handleDroneLand = useCallback(
+    (droneId: string): void => {
+      onLand?.(droneId)
+    },
+    [onLand]
+  )
 
-  const handleAllReturnToBase = (): void => {
-    onShowConfirmDialog?.('allReturnToBase', () => {
-      drones.forEach((drone) => {
-        if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
-          onReturnToBase?.(drone.id)
-        }
-      })
-    })
-  }
+  const handleDroneReturnToBase = useCallback(
+    (droneId: string): void => {
+      onReturnToBase?.(droneId)
+    },
+    [onReturnToBase]
+  )
+
+  const handleDroneLocate = useCallback(
+    (droneId: string): void => {
+      onLocateDrone?.(droneId)
+    },
+    [onLocateDrone]
+  )
+
+  const handleTogglePath = useCallback(
+    (droneId: string): void => {
+      onTogglePath?.(droneId)
+    },
+    [onTogglePath]
+  )
+
+  const handleToggleAllPaths = useCallback(
+    (show: boolean): void => {
+      onToggleAllPaths?.(show)
+    },
+    [onToggleAllPaths]
+  )
 
   // Track if user has modified inputs locally
   const isPickingBaseRef = useRef(isPickingBase)
@@ -358,49 +534,19 @@ const MainTab = ({
         </p>
       </div>
 
-      {drones.length > 0 && (
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3>드론 목록</h3>
-            <div className={styles.bulkActions}>
-              <button
-                className={`${styles.bulkButton} ${styles.randomButton}`}
-                onClick={handleAllRandomMove}
-                disabled={!basePosition}
-                title="전체 랜덤 이동"
-              >
-                <Shuffle size={14} />
-              </button>
-              <button
-                className={`${styles.bulkButton} ${styles.takeoffButton}`}
-                onClick={handleAllTakeoff}
-                title="전체 이륙"
-              >
-                <PlaneTakeoff size={14} />
-              </button>
-              <button
-                className={`${styles.bulkButton} ${styles.returnButton}`}
-                onClick={handleAllReturnToBase}
-                title="전체 복귀"
-              >
-                <Home size={14} />
-              </button>
-            </div>
-          </div>
-          <div className={styles.droneList}>
-            {drones.map((drone: Drone) => (
-              <DroneCard
-                key={drone.id}
-                drone={drone}
-                onTakeoff={() => onTakeoff?.(drone.id)}
-                onLand={() => onLand?.(drone.id)}
-                onReturnToBase={() => onReturnToBase?.(drone.id)}
-                onLocate={() => onLocateDrone?.(drone.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <DroneListSection
+        basePosition={basePosition ?? undefined}
+        pathVisibility={pathVisibility}
+        onTakeoff={handleDroneTakeoff}
+        onLand={handleDroneLand}
+        onReturnToBase={handleDroneReturnToBase}
+        onLocate={handleDroneLocate}
+        onTogglePath={handleTogglePath}
+        onToggleAllPaths={handleToggleAllPaths}
+        onRandomMove={onRandomMove}
+        onDirectTakeoff={onDirectTakeoff}
+        onShowConfirmDialog={onShowConfirmDialog}
+      />
     </div>
   )
 }

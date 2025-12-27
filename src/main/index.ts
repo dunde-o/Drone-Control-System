@@ -25,7 +25,7 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -55,7 +55,7 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('com.dronecontrol.app')
 
   // 빈 메뉴로 기본 단축키 비활성화 (Ctrl+R, Ctrl+Shift+I 등)
   Menu.setApplicationMenu(Menu.buildFromTemplate([]))

@@ -9,9 +9,13 @@ export interface TabProps {
   // Main tab props
   baseLat: string
   baseLng: string
+  currentBaseLat: number
+  currentBaseLng: number
   onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
   onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBase: () => void
+  isPickingBase: boolean
+  onTogglePickBase: () => void
   // API settings tab props
   apiKeyInput: string
   onApiKeyInputChange: (e: ChangeEvent<HTMLInputElement>) => void

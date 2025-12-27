@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, ChangeEvent } from 'react'
+import { useState, useEffect, useRef, ChangeEvent, useCallback } from 'react'
 
-import { APIProvider, Map } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, MapMouseEvent } from '@vis.gl/react-google-maps'
 
 import Drawer from '../Drawer'
 import BaseMarker from '../markers/BaseMarker'
@@ -17,6 +17,8 @@ const App = (): React.JSX.Element => {
   const [basePosition, setBasePosition] = useState(DEFAULT_BASE_POSITION)
   const [baseLatInput, setBaseLatInput] = useState(String(DEFAULT_BASE_POSITION.lat))
   const [baseLngInput, setBaseLngInput] = useState(String(DEFAULT_BASE_POSITION.lng))
+  const [isPickingBase, setIsPickingBase] = useState(false)
+  const [savedBaseInputs, setSavedBaseInputs] = useState({ lat: '', lng: '' })
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
 
@@ -60,6 +62,44 @@ const App = (): React.JSX.Element => {
     }
   }
 
+  const handleTogglePickBase = (): void => {
+    if (isPickingBase) {
+      // 취소: 원래 값으로 복원
+      setBaseLatInput(savedBaseInputs.lat)
+      setBaseLngInput(savedBaseInputs.lng)
+      setIsPickingBase(false)
+    } else {
+      // 시작: 현재 값 저장
+      setSavedBaseInputs({ lat: baseLatInput, lng: baseLngInput })
+      setIsPickingBase(true)
+    }
+  }
+
+  const handleMapClick = useCallback(
+    (e: MapMouseEvent): void => {
+      if (isPickingBase && e.detail.latLng) {
+        const lat = e.detail.latLng.lat
+        const lng = e.detail.latLng.lng
+        setBaseLatInput(String(lat))
+        setBaseLngInput(String(lng))
+        setIsPickingBase(false)
+      }
+    },
+    [isPickingBase]
+  )
+
+  const handleMapMouseMove = useCallback(
+    (e: MapMouseEvent): void => {
+      if (isPickingBase && e.detail.latLng) {
+        const lat = e.detail.latLng.lat
+        const lng = e.detail.latLng.lng
+        setBaseLatInput(String(lat))
+        setBaseLngInput(String(lng))
+      }
+    },
+    [isPickingBase]
+  )
+
   useEffect(() => {
     const handleToggleDrawerByKeyboard = (e: KeyboardEvent): void => {
       if (e.key === 'Tab') {
@@ -87,13 +127,15 @@ const App = (): React.JSX.Element => {
   return (
     <APIProvider apiKey={apiKey}>
       <Map
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', cursor: isPickingBase ? 'crosshair' : 'default' }}
         defaultCenter={DEFAULT_BASE_POSITION}
         defaultZoom={12}
         gestureHandling="greedy"
         disableDefaultUI
         mapId="drone-control-map"
         clickableIcons={false}
+        onClick={handleMapClick}
+        onMousemove={handleMapMouseMove}
       >
         <BaseMarker position={basePosition} />
       </Map>
@@ -109,9 +151,13 @@ const App = (): React.JSX.Element => {
           tabProps={{
             baseLat: baseLatInput,
             baseLng: baseLngInput,
+            currentBaseLat: basePosition.lat,
+            currentBaseLng: basePosition.lng,
             onBaseLatChange: handleChangeBaseLatInput,
             onBaseLngChange: handleChangeBaseLngInput,
             onApplyBase: handleApplyBase,
+            isPickingBase,
+            onTogglePickBase: handleTogglePickBase,
             apiKeyInput,
             onApiKeyInputChange: handleChangeApiKeyInput,
             onApplyApiKey: handleApplyApiKey

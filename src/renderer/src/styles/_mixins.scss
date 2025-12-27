@@ -15,8 +15,14 @@
   font-size: vars.$font-size-sm;
   cursor: pointer;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: vars.$color-primary-hover;
+  }
+
+  &:disabled {
+    background-color: vars.$color-text-muted;
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 }
 

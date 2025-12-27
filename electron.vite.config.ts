@@ -21,8 +21,8 @@ export default defineConfig({
     css: {
       preprocessorOptions: {
         scss: {
-          api: 'modern-compiler' as const
-        }
+          api: 'modern-compiler'
+        } as Record<string, unknown>
       }
     }
   }

@@ -14,9 +14,13 @@ const TabContent = ({ activeTabId, tabProps }: TabContentProps): React.JSX.Eleme
       <MainTab
         baseLat={tabProps.baseLat}
         baseLng={tabProps.baseLng}
+        currentBaseLat={tabProps.currentBaseLat}
+        currentBaseLng={tabProps.currentBaseLng}
         onBaseLatChange={tabProps.onBaseLatChange}
         onBaseLngChange={tabProps.onBaseLngChange}
         onApplyBase={tabProps.onApplyBase}
+        isPickingBase={tabProps.isPickingBase}
+        onTogglePickBase={tabProps.onTogglePickBase}
       />
     ),
     api: (

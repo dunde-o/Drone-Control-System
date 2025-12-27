@@ -29,10 +29,42 @@
   width: 100%;
 }
 
+.buttonGroup {
+  display: flex;
+  gap: vars.$spacing-sm;
+  margin-bottom: vars.$spacing-sm;
+}
+
 .button {
   @include button-primary;
-  width: 100%;
-  margin-bottom: vars.$spacing-sm;
+  flex: 1;
+}
+
+.pickButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: vars.$border-radius-md;
+  background-color: vars.$color-text-muted;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: vars.$color-text-secondary;
+  }
+
+  &.active {
+    background-color: #e74c3c;
+
+    &:hover {
+      background-color: #c0392b;
+    }
+  }
 }
 
 .hint {

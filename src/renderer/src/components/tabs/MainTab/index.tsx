@@ -1,22 +1,34 @@
 import { ChangeEvent } from 'react'
 
+import { MapPinned, X } from 'lucide-react'
+
 import styles from './styles.module.scss'
 
 interface MainTabProps {
   baseLat: string
   baseLng: string
+  currentBaseLat: number
+  currentBaseLng: number
   onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
   onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
   onApplyBase: () => void
+  isPickingBase: boolean
+  onTogglePickBase: () => void
 }
 
 const MainTab = ({
   baseLat,
   baseLng,
+  currentBaseLat,
+  currentBaseLng,
   onBaseLatChange,
   onBaseLngChange,
-  onApplyBase
+  onApplyBase,
+  isPickingBase,
+  onTogglePickBase
 }: MainTabProps): React.JSX.Element => {
+  const isInputChanged =
+    parseFloat(baseLat) !== currentBaseLat || parseFloat(baseLng) !== currentBaseLng
   return (
     <div className={styles.container}>
       <h2>MAIN</h2>
@@ -47,10 +59,23 @@ const MainTab = ({
             />
           </div>
         </div>
-        <button onClick={onApplyBase} className={styles.button}>
-          Base 위치 적용
-        </button>
-        <p className={styles.hint}>드론의 이착륙 기지 위치를 설정합니다</p>
+        <div className={styles.buttonGroup}>
+          <button onClick={onApplyBase} className={styles.button} disabled={!isInputChanged}>
+            Base 위치 적용
+          </button>
+          <button
+            onClick={onTogglePickBase}
+            className={`${styles.pickButton} ${isPickingBase ? styles.active : ''}`}
+            title={isPickingBase ? '선택 취소' : '지도에서 선택'}
+          >
+            {isPickingBase ? <X size={20} /> : <MapPinned size={20} />}
+          </button>
+        </div>
+        <p className={styles.hint}>
+          {isPickingBase
+            ? '지도를 클릭하여 Base 위치를 선택하세요'
+            : '드론의 이착륙 기지 위치를 설정합니다'}
+        </p>
       </div>
     </div>
   )

@@ -10,18 +10,21 @@ import MarkerInfoDrawer from '@renderer/components/MarkerInfoDrawer'
 import DronePath from '@renderer/components/DronePath'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
 import DroneMarker from '@renderer/components/markers/DroneMarker'
+import ClusterMarker from '@renderer/components/markers/ClusterMarker'
 import MovementPath from '@renderer/components/MovementPath'
 import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
+import { getVisibleClustersAndDrones, Cluster } from '@renderer/utils/mapClustering'
 
 import { DEFAULT_MAP_CENTER } from './constants'
 
 interface MapControllerProps {
   onPanToBase: (panTo: (position: { lat: number; lng: number }) => void) => void
   onDroneMove: (droneId: string, lat: number, lng: number, append: boolean) => void
+  onMapStateChange: (zoom: number, bounds: google.maps.LatLngBounds | null) => void
 }
 
-const MapController = ({ onPanToBase, onDroneMove }: MapControllerProps): null => {
+const MapController = ({ onPanToBase, onDroneMove, onMapStateChange }: MapControllerProps): null => {
   const map = useMap()
 
   useEffect(() => {
@@ -32,6 +35,29 @@ const MapController = ({ onPanToBase, onDroneMove }: MapControllerProps): null =
       map.setZoom(15)
     })
   }, [map, onPanToBase])
+
+  // 줌/바운드 변경 감지
+  useEffect(() => {
+    if (!map) return
+
+    const updateMapState = (): void => {
+      const zoom = map.getZoom() ?? 12
+      const bounds = map.getBounds() ?? null
+      onMapStateChange(zoom, bounds)
+    }
+
+    // 초기 상태
+    updateMapState()
+
+    // 이벤트 리스너
+    const zoomListener = map.addListener('zoom_changed', updateMapState)
+    const boundsListener = map.addListener('bounds_changed', updateMapState)
+
+    return () => {
+      google.maps.event.removeListener(zoomListener)
+      google.maps.event.removeListener(boundsListener)
+    }
+  }, [map, onMapStateChange])
 
   // 드론 이동 요청 이벤트 처리
   useEffect(() => {
@@ -105,6 +131,10 @@ const App = (): React.JSX.Element => {
 
   // Path visibility state (드론별 경로 표시 여부)
   const [pathVisibility, setPathVisibility] = useState<Record<string, boolean>>({})
+
+  // Map state for clustering
+  const [mapZoom, setMapZoom] = useState(12)
+  const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null)
 
   // Refs for closures
   const activeTabRef = useRef(activeTab)
@@ -390,6 +420,30 @@ const App = (): React.JSX.Element => {
     [drones]
   )
 
+  // 맵 상태 변경 핸들러
+  const handleMapStateChange = useCallback(
+    (zoom: number, bounds: google.maps.LatLngBounds | null): void => {
+      setMapZoom(zoom)
+      setMapBounds(bounds)
+    },
+    []
+  )
+
+  // 클러스터링 결과 계산
+  const { clusters, singles } = useMemo(() => {
+    return getVisibleClustersAndDrones(drones, mapBounds, mapZoom, 50)
+  }, [drones, mapBounds, mapZoom])
+
+  // 클러스터 클릭 시 확대
+  const handleClusterClick = useCallback(
+    (cluster: Cluster): void => {
+      if (panToRef.current) {
+        panToRef.current(cluster.center)
+      }
+    },
+    []
+  )
+
   // 맵 우클릭으로 드론 이동 명령
   const handleMapContextMenu = useCallback(
     (e: MouseEvent): void => {
@@ -481,7 +535,12 @@ const App = (): React.JSX.Element => {
             onClick={handleBaseMarkerClick}
           />
         )}
-        {drones.map((drone) => (
+        {/* 클러스터 마커 */}
+        {clusters.map((cluster) => (
+          <ClusterMarker key={cluster.id} cluster={cluster} onClick={handleClusterClick} />
+        ))}
+        {/* 단일 드론 마커 (클러스터에 포함되지 않은 드론) */}
+        {singles.map((drone) => (
           <DroneMarker
             key={drone.id}
             drone={drone}
@@ -503,7 +562,11 @@ const App = (): React.JSX.Element => {
           .map((drone) => (
             <DronePath key={drone.id} drone={drone} />
           ))}
-        <MapController onPanToBase={handleSetPanTo} onDroneMove={handleDroneMove} />
+        <MapController
+          onPanToBase={handleSetPanTo}
+          onDroneMove={handleDroneMove}
+          onMapStateChange={handleMapStateChange}
+        />
       </Map>
 
       <MarkerInfoDrawer

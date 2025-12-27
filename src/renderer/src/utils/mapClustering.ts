@@ -39,15 +39,29 @@ export function filterDronesInViewport(
   )
 }
 
+// 줌 레벨에 따른 클러스터 반경 계산
+// 줌이 낮을수록(축소) 반경을 넓게, 높을수록(확대) 반경을 좁게
+function getClusterRadiusByZoom(zoom: number, baseRadius: number): number {
+  // 줌 15를 기준으로 설정
+  // 줌 10: baseRadius * 2.0 (넓게)
+  // 줌 15: baseRadius * 1.0 (기준)
+  // 줌 18: baseRadius * 0.6 (좁게)
+  const zoomFactor = Math.pow(0.85, zoom - 15)
+  return Math.max(baseRadius * 0.5, Math.min(baseRadius * 2.5, baseRadius * zoomFactor))
+}
+
 // 드론 클러스터링
 export function clusterDrones(
   drones: Drone[],
   zoom: number,
-  clusterRadius: number = 40 // 픽셀 단위 클러스터 반경
+  baseClusterRadius: number = 60 // 기본 클러스터 반경 (픽셀)
 ): ClusteringResult {
   if (drones.length === 0) {
     return { clusters: [], singles: [] }
   }
+
+  // 줌 레벨에 따른 실제 클러스터 반경 계산
+  const clusterRadius = getClusterRadiusByZoom(zoom, baseClusterRadius)
 
   // 각 드론의 픽셀 좌표 계산
   const dronePixels = drones.map((drone) => ({
@@ -76,8 +90,8 @@ export function clusterDrones(
       }
     }
 
-    if (nearby.length > 1) {
-      // 클러스터 생성
+    if (nearby.length > 5) {
+      // 6대 이상일 때만 클러스터 생성
       nearby.forEach((item) => clustered.add(item.drone.id))
 
       // 클러스터 중심 계산
@@ -106,11 +120,11 @@ export function getVisibleClustersAndDrones(
   drones: Drone[],
   bounds: google.maps.LatLngBounds | null | undefined,
   zoom: number,
-  clusterRadius: number = 40
+  baseClusterRadius: number = 60
 ): ClusteringResult {
   // 뷰포트 내 드론만 필터링
   const visibleDrones = filterDronesInViewport(drones, bounds)
 
   // 클러스터링 적용
-  return clusterDrones(visibleDrones, zoom, clusterRadius)
+  return clusterDrones(visibleDrones, zoom, baseClusterRadius)
 }

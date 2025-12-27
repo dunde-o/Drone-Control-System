@@ -1,20 +1,19 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-maps'
 
-import { useApiKey, useBaseMovement, useBasePosition, useDrones } from '@renderer/hooks/queries'
+import { useApiKey, useBaseMovement, useBasePosition } from '@renderer/hooks/queries'
 import { useWebSocket } from '@renderer/contexts/WebSocketContext'
+import { Drone } from '@renderer/contexts/WebSocketContext/types'
 import ConfirmDialog from '@renderer/components/ConfirmDialog'
 import Drawer from '@renderer/components/Drawer'
-import MarkerInfoDrawer from '@renderer/components/MarkerInfoDrawer'
-import DronePath from '@renderer/components/DronePath'
+import DroneMarkersLayer from '@renderer/components/DroneMarkersLayer'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
-import DroneMarker from '@renderer/components/markers/DroneMarker'
-import ClusterMarker from '@renderer/components/markers/ClusterMarker'
 import MovementPath from '@renderer/components/MovementPath'
+import SelectedMarkerInfo from '@renderer/components/SelectedMarkerInfo'
 import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
-import { getVisibleClustersAndDrones, Cluster } from '@renderer/utils/mapClustering'
+import { Cluster } from '@renderer/utils/mapClustering'
 
 import { DEFAULT_MAP_CENTER } from './constants'
 
@@ -24,7 +23,11 @@ interface MapControllerProps {
   onMapStateChange: (zoom: number, bounds: google.maps.LatLngBounds | null) => void
 }
 
-const MapController = ({ onPanToBase, onDroneMove, onMapStateChange }: MapControllerProps): null => {
+const MapController = ({
+  onPanToBase,
+  onDroneMove,
+  onMapStateChange
+}: MapControllerProps): null => {
   const map = useMap()
 
   useEffect(() => {
@@ -141,40 +144,13 @@ const App = (): React.JSX.Element => {
   const drawerOpenRef = useRef(drawerOpen)
   const panToRef = useRef<((position: { lat: number; lng: number }) => void) | null>(null)
 
+  // Selected drone for context menu (set by DroneMarkersLayer)
+  const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null)
+
   // React Query hooks
   const { apiKey } = useApiKey()
   const { data: basePosition } = useBasePosition()
   const { data: baseMovement } = useBaseMovement()
-  const { data: drones = [] } = useDrones()
-
-  // Compute selected marker info from real-time data
-  const selectedMarker = useMemo(() => {
-    if (!selectedMarkerId) return null
-
-    if (selectedMarkerId === 'base' && basePosition) {
-      return {
-        id: 'base' as const,
-        type: 'base' as const,
-        name: 'Base Station',
-        position: basePosition
-      }
-    }
-
-    const drone = drones.find((d) => d.id === selectedMarkerId)
-    if (drone) {
-      return {
-        id: drone.id,
-        type: 'drone' as const,
-        name: drone.name,
-        position: drone.position,
-        status: drone.status,
-        battery: drone.battery,
-        altitude: drone.altitude
-      }
-    }
-
-    return null
-  }, [selectedMarkerId, basePosition, drones])
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -188,16 +164,6 @@ const App = (): React.JSX.Element => {
       document.body.classList.remove('picking-base')
     }
   }, [isPickingBase])
-
-  // 선택된 드론 (hovering, moving, returning 상태만 이동 명령 가능)
-  const selectedDrone = useMemo(() => {
-    if (!selectedMarkerId || selectedMarkerId === 'base') return null
-    const drone = drones.find((d) => d.id === selectedMarkerId)
-    if (drone && ['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
-      return drone
-    }
-    return null
-  }, [selectedMarkerId, drones])
 
   // 드론 선택 시 맵 커서 변경
   useEffect(() => {
@@ -272,16 +238,15 @@ const App = (): React.JSX.Element => {
   }, [basePosition])
 
   // 드론 위치로 이동하고 드론 선택
-  const handleLocateDrone = useCallback(
-    (droneId: string): void => {
-      const drone = drones.find((d) => d.id === droneId)
-      if (drone && panToRef.current) {
-        panToRef.current(drone.position)
-        setSelectedMarkerId(droneId)
-      }
-    },
-    [drones]
-  )
+  const handleLocateDrone = useCallback((droneId: string): void => {
+    const helpers = (window as unknown as Record<string, unknown>).__droneHelpers as
+      | { locateDrone: (id: string) => void }
+      | undefined
+    if (helpers?.locateDrone) {
+      helpers.locateDrone(droneId)
+    }
+    setSelectedMarkerId(droneId)
+  }, [])
 
   const handleMapMouseMove = useCallback(
     (e: MapMouseEvent): void => {
@@ -297,36 +262,33 @@ const App = (): React.JSX.Element => {
 
   const { sendMessage } = useWebSocket()
 
-  // 드론 이륙 요청 (확인 팝업 표시)
-  const handleTakeoffRequest = useCallback(
-    (droneId: string): void => {
-      const drone = drones.find((d) => d.id === droneId)
-      if (drone) {
-        setConfirmDialog({
-          isOpen: true,
-          type: 'takeoff',
-          droneId,
-          droneName: drone.name
-        })
-      }
+  // 드론 이륙/착륙 확인 다이얼로그 표시 (SelectedMarkerInfo, MainTab에서 호출)
+  const handleShowDroneConfirmDialog = useCallback(
+    (type: 'takeoff' | 'land', droneId: string, droneName: string): void => {
+      setConfirmDialog({
+        isOpen: true,
+        type,
+        droneId,
+        droneName
+      })
     },
-    [drones]
+    []
   )
 
-  // 드론 착륙 요청 (확인 팝업 표시)
-  const handleLandRequest = useCallback(
-    (droneId: string): void => {
-      const drone = drones.find((d) => d.id === droneId)
-      if (drone) {
-        setConfirmDialog({
-          isOpen: true,
-          type: 'land',
-          droneId,
-          droneName: drone.name
-        })
-      }
+  // 드론 이륙 요청 (MainTab에서 호출)
+  const handleTakeoffRequest = useCallback(
+    (droneId: string, droneName: string): void => {
+      handleShowDroneConfirmDialog('takeoff', droneId, droneName)
     },
-    [drones]
+    [handleShowDroneConfirmDialog]
+  )
+
+  // 드론 착륙 요청 (MainTab에서 호출)
+  const handleLandRequest = useCallback(
+    (droneId: string, droneName: string): void => {
+      handleShowDroneConfirmDialog('land', droneId, droneName)
+    },
+    [handleShowDroneConfirmDialog]
   )
 
   // 리턴투베이스 (확인 없이 바로 실행)
@@ -409,16 +371,17 @@ const App = (): React.JSX.Element => {
   }, [])
 
   // 전체 드론 경로 표시 토글
-  const handleToggleAllPaths = useCallback(
-    (show: boolean): void => {
-      const newVisibility: Record<string, boolean> = {}
-      drones.forEach((drone) => {
-        newVisibility[drone.id] = show
-      })
-      setPathVisibility(newVisibility)
-    },
-    [drones]
-  )
+  const handleToggleAllPaths = useCallback((show: boolean): void => {
+    const helpers = (window as unknown as Record<string, unknown>).__droneHelpers as
+      | { getAllDroneIds: () => string[] }
+      | undefined
+    const droneIds = helpers?.getAllDroneIds?.() ?? []
+    const newVisibility: Record<string, boolean> = {}
+    droneIds.forEach((id) => {
+      newVisibility[id] = show
+    })
+    setPathVisibility(newVisibility)
+  }, [])
 
   // 맵 상태 변경 핸들러
   const handleMapStateChange = useCallback(
@@ -429,20 +392,12 @@ const App = (): React.JSX.Element => {
     []
   )
 
-  // 클러스터링 결과 계산
-  const { clusters, singles } = useMemo(() => {
-    return getVisibleClustersAndDrones(drones, mapBounds, mapZoom, 50)
-  }, [drones, mapBounds, mapZoom])
-
   // 클러스터 클릭 시 확대
-  const handleClusterClick = useCallback(
-    (cluster: Cluster): void => {
-      if (panToRef.current) {
-        panToRef.current(cluster.center)
-      }
-    },
-    []
-  )
+  const handleClusterClick = useCallback((cluster: Cluster): void => {
+    if (panToRef.current) {
+      panToRef.current(cluster.center)
+    }
+  }, [])
 
   // 맵 우클릭으로 드론 이동 명령
   const handleMapContextMenu = useCallback(
@@ -531,37 +486,21 @@ const App = (): React.JSX.Element => {
         {basePosition && (
           <BaseMarker
             position={basePosition}
-            isSelected={selectedMarker?.id === 'base'}
+            isSelected={selectedMarkerId === 'base'}
             onClick={handleBaseMarkerClick}
           />
         )}
-        {/* 클러스터 마커 */}
-        {clusters.map((cluster) => (
-          <ClusterMarker key={cluster.id} cluster={cluster} onClick={handleClusterClick} />
-        ))}
-        {/* 단일 드론 마커 (클러스터에 포함되지 않은 드론) */}
-        {singles.map((drone) => (
-          <DroneMarker
-            key={drone.id}
-            drone={drone}
-            isSelected={selectedMarker?.id === drone.id}
-            onClick={handleDroneMarkerClick}
-          />
-        ))}
+        <DroneMarkersLayer
+          mapZoom={mapZoom}
+          mapBounds={mapBounds}
+          selectedMarkerId={selectedMarkerId}
+          pathVisibility={pathVisibility}
+          panToRef={panToRef}
+          onDroneMarkerClick={handleDroneMarkerClick}
+          onClusterClick={handleClusterClick}
+          onSelectedDroneChange={setSelectedDrone}
+        />
         {baseMovement && <MovementPath movement={baseMovement} />}
-        {/* 선택된 드론의 경로 (항상 표시) */}
-        {selectedDrone && selectedDrone.waypoints.length > 0 && <DronePath drone={selectedDrone} />}
-        {/* pathVisibility로 활성화된 드론들의 경로 (선택되지 않은 드론만) */}
-        {drones
-          .filter(
-            (drone) =>
-              pathVisibility[drone.id] &&
-              drone.id !== selectedDrone?.id &&
-              drone.waypoints.length > 0
-          )
-          .map((drone) => (
-            <DronePath key={drone.id} drone={drone} />
-          ))}
         <MapController
           onPanToBase={handleSetPanTo}
           onDroneMove={handleDroneMove}
@@ -569,12 +508,10 @@ const App = (): React.JSX.Element => {
         />
       </Map>
 
-      <MarkerInfoDrawer
-        marker={selectedMarker}
+      <SelectedMarkerInfo
+        selectedMarkerId={selectedMarkerId}
         onClose={handleCloseMarkerInfo}
-        onTakeoff={handleTakeoffRequest}
-        onLand={handleLandRequest}
-        onReturnToBase={handleReturnToBase}
+        onShowConfirmDialog={handleShowDroneConfirmDialog}
       />
 
       <ConfirmDialog

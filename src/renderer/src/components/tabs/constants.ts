@@ -10,8 +10,8 @@ export interface MainTabProps {
   pickingLat: string
   pickingLng: string
   onPanToBase?: () => void
-  onTakeoff?: (droneId: string) => void
-  onLand?: (droneId: string) => void
+  onTakeoff?: (droneId: string, droneName: string) => void
+  onLand?: (droneId: string, droneName: string) => void
   onReturnToBase?: (droneId: string) => void
   onLocateDrone?: (droneId: string) => void
   onRandomMove?: (droneId: string, lat: number, lng: number) => void

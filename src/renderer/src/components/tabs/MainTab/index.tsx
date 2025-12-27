@@ -23,11 +23,33 @@ import { Drone } from '@renderer/contexts/WebSocketContext/types'
 
 import styles from './styles.module.scss'
 
+// 메모이제이션된 아이콘 컴포넌트
+const LocateIcon = memo((): React.JSX.Element => <Locate size={16} />)
+LocateIcon.displayName = 'LocateIcon'
+
+const MapPinnedIcon = memo((): React.JSX.Element => <MapPinned size={20} />)
+MapPinnedIcon.displayName = 'MapPinnedIcon'
+
+const XIcon = memo((): React.JSX.Element => <X size={20} />)
+XIcon.displayName = 'XIcon'
+
+const RouteIcon = memo((): React.JSX.Element => <Route size={14} />)
+RouteIcon.displayName = 'RouteIcon'
+
+const ShuffleIcon = memo((): React.JSX.Element => <Shuffle size={14} />)
+ShuffleIcon.displayName = 'ShuffleIcon'
+
+const PlaneTakeoffIcon = memo((): React.JSX.Element => <PlaneTakeoff size={14} />)
+PlaneTakeoffIcon.displayName = 'PlaneTakeoffIcon'
+
+const HomeIcon = memo((): React.JSX.Element => <Home size={14} />)
+HomeIcon.displayName = 'HomeIcon'
+
 interface DroneCardProps {
   drone: Drone
   showPath: boolean
-  onTakeoff: (droneId: string) => void
-  onLand: (droneId: string) => void
+  onTakeoff: (droneId: string, droneName: string) => void
+  onLand: (droneId: string, droneName: string) => void
   onReturnToBase: (droneId: string) => void
   onLocate: (droneId: string) => void
   onTogglePath: (droneId: string) => void
@@ -89,9 +111,9 @@ const DroneCardComponent = ({
 
   const handleTakeoffLand = (): void => {
     if (isGroundStatus(drone.status)) {
-      onTakeoff(drone.id)
+      onTakeoff(drone.id, drone.name)
     } else if (isAirStatus(drone.status)) {
-      onLand(drone.id)
+      onLand(drone.id, drone.name)
     }
   }
 
@@ -176,8 +198,8 @@ const DroneCard = memo(DroneCardComponent, (prevProps, nextProps) => {
 interface DroneListSectionProps {
   basePosition: { lat: number; lng: number } | undefined
   pathVisibility: Record<string, boolean>
-  onTakeoff: (droneId: string) => void
-  onLand: (droneId: string) => void
+  onTakeoff: (droneId: string, droneName: string) => void
+  onLand: (droneId: string, droneName: string) => void
   onReturnToBase: (droneId: string) => void
   onLocate: (droneId: string) => void
   onTogglePath: (droneId: string) => void
@@ -257,7 +279,7 @@ const DroneListSection = memo(
               onClick={handleToggleAllPaths}
               title={allPathsVisible ? '전체 경로 숨기기' : '전체 경로 보기'}
             >
-              <Route size={14} />
+              <RouteIcon />
             </button>
             <button
               className={`${styles.bulkButton} ${styles.randomButton}`}
@@ -265,21 +287,21 @@ const DroneListSection = memo(
               disabled={!basePosition}
               title="전체 랜덤 이동"
             >
-              <Shuffle size={14} />
+              <ShuffleIcon />
             </button>
             <button
               className={`${styles.bulkButton} ${styles.takeoffButton}`}
               onClick={handleAllTakeoff}
               title="전체 이륙"
             >
-              <PlaneTakeoff size={14} />
+              <PlaneTakeoffIcon />
             </button>
             <button
               className={`${styles.bulkButton} ${styles.returnButton}`}
               onClick={handleAllReturnToBase}
               title="전체 복귀"
             >
-              <Home size={14} />
+              <HomeIcon />
             </button>
           </div>
         </div>
@@ -333,8 +355,8 @@ interface MainTabProps {
   pickingLat: string
   pickingLng: string
   onPanToBase?: () => void
-  onTakeoff?: (droneId: string) => void
-  onLand?: (droneId: string) => void
+  onTakeoff?: (droneId: string, droneName: string) => void
+  onLand?: (droneId: string, droneName: string) => void
   onReturnToBase?: (droneId: string) => void
   onLocateDrone?: (droneId: string) => void
   onRandomMove?: (droneId: string, lat: number, lng: number) => void
@@ -374,15 +396,15 @@ const MainTab = ({
 
   // 안정적인 콜백 참조 (DroneListSection에 전달)
   const handleDroneTakeoff = useCallback(
-    (droneId: string): void => {
-      onTakeoff?.(droneId)
+    (droneId: string, droneName: string): void => {
+      onTakeoff?.(droneId, droneName)
     },
     [onTakeoff]
   )
 
   const handleDroneLand = useCallback(
-    (droneId: string): void => {
-      onLand?.(droneId)
+    (droneId: string, droneName: string): void => {
+      onLand?.(droneId, droneName)
     },
     [onLand]
   )
@@ -475,7 +497,7 @@ const MainTab = ({
             title="Base 위치로 이동"
             disabled={!isBaseEnabled || !basePosition}
           >
-            <Locate size={16} />
+            <LocateIcon />
           </button>
         </div>
         {!isBaseEnabled && (
@@ -524,7 +546,7 @@ const MainTab = ({
             title={isPickingBase ? '선택 취소' : '지도에서 선택'}
             disabled={isInputDisabled}
           >
-            {isPickingBase ? <X size={20} /> : <MapPinned size={20} />}
+            {isPickingBase ? <XIcon /> : <MapPinnedIcon />}
           </button>
         </div>
         <p className={styles.hint}>

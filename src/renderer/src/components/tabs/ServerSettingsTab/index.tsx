@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from 'react'
+import { ChangeEvent, memo, useCallback, useEffect, useState } from 'react'
 
 import { Loader2 } from 'lucide-react'
 
@@ -14,8 +14,8 @@ import {
 } from '@renderer/hooks/mutations'
 import {
   useConnectionStatus,
+  useDroneCount,
   useDroneLog,
-  useDrones,
   useHeartbeatLog,
   useServerConfig,
   useServerRunning
@@ -24,18 +24,72 @@ import { DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT } from '@renderer/components/A
 
 import styles from './styles.module.scss'
 
+// 드론 수 입력 컴포넌트 (useDrones 구독을 격리)
+interface DroneCountInputProps {
+  isConnected: boolean
+}
+
+const DroneCountInput = memo(({ isConnected }: DroneCountInputProps): React.JSX.Element => {
+  const droneCount = useDroneCount()
+  const updateDroneCount = useUpdateDroneCount()
+  const [droneCountInput, setDroneCountInput] = useState('')
+
+  const isDroneCountUpdating = updateDroneCount.isPending
+  const isDroneCountUnchanged = droneCountInput === String(droneCount)
+
+  // Sync drone count input when drones change
+  useEffect(() => {
+    setDroneCountInput(String(droneCount))
+  }, [droneCount])
+
+  const handleDroneCountChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
+    setDroneCountInput(e.target.value)
+  }, [])
+
+  const handleApplyDroneCount = useCallback((): void => {
+    const count = parseInt(droneCountInput, 10)
+    if (isNaN(count) || count < 0) return
+    updateDroneCount.mutate(count)
+  }, [droneCountInput, updateDroneCount])
+
+  return (
+    <div className={styles.durationRow}>
+      <label className={styles.statusLabel}>드론 수:</label>
+      <div className={styles.durationInputGroup}>
+        <input
+          type="number"
+          value={droneCountInput}
+          onChange={handleDroneCountChange}
+          className={styles.durationInput}
+          min="0"
+          step="1"
+          disabled={!isConnected || isDroneCountUpdating}
+          placeholder="-"
+        />
+        <button
+          onClick={handleApplyDroneCount}
+          className={styles.applyButton}
+          disabled={!isConnected || !droneCountInput || isDroneCountUpdating || isDroneCountUnchanged}
+        >
+          {isDroneCountUpdating ? <Loader2 size={14} className={styles.spinner} /> : '적용'}
+        </button>
+      </div>
+    </div>
+  )
+})
+
+DroneCountInput.displayName = 'DroneCountInput'
+
 const ServerSettingsTab = (): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
   const { data: isServerRunning = false } = useServerRunning()
   const { data: serverConfig } = useServerConfig()
-  const { data: drones = [] } = useDrones()
   const { showHeartbeatLog, toggleHeartbeatLog } = useHeartbeatLog()
   const { showDroneLog, toggleDroneLog } = useDroneLog()
 
   const { startServer, stopServer } = useServerControl()
   const updateBaseMoveDuration = useUpdateBaseMoveDuration()
   const updateHeartbeatInterval = useUpdateHeartbeatInterval()
-  const updateDroneCount = useUpdateDroneCount()
   const updateDroneUpdateInterval = useUpdateDroneUpdateInterval()
   const updateDroneVerticalSpeed = useUpdateDroneVerticalSpeed()
   const updateDroneFlySpeed = useUpdateDroneFlySpeed()
@@ -46,7 +100,6 @@ const ServerSettingsTab = (): React.JSX.Element => {
   const [serverPort, setServerPort] = useState(DEFAULT_SERVER_PORT)
   const [baseMoveDurationInput, setBaseMoveDurationInput] = useState('')
   const [heartbeatIntervalInput, setHeartbeatIntervalInput] = useState('')
-  const [droneCountInput, setDroneCountInput] = useState('')
   const [droneUpdateIntervalInput, setDroneUpdateIntervalInput] = useState('')
   const [droneVerticalSpeedInput, setDroneVerticalSpeedInput] = useState('')
   const [droneFlySpeedInput, setDroneFlySpeedInput] = useState('')
@@ -65,11 +118,6 @@ const ServerSettingsTab = (): React.JSX.Element => {
       setBaseAltitudeInput(String(serverConfig.baseAltitude))
     }
   }, [serverConfig])
-
-  // Sync drone count input when drones change
-  useEffect(() => {
-    setDroneCountInput(String(drones.length))
-  }, [drones.length])
 
   const handleServerHostChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setServerHost(e.target.value)
@@ -105,16 +153,6 @@ const ServerSettingsTab = (): React.JSX.Element => {
     const interval = parseInt(heartbeatIntervalInput, 10)
     if (isNaN(interval) || interval < 1000) return
     updateHeartbeatInterval.mutate(interval)
-  }
-
-  const handleDroneCountChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    setDroneCountInput(e.target.value)
-  }
-
-  const handleApplyDroneCount = (): void => {
-    const count = parseInt(droneCountInput, 10)
-    if (isNaN(count) || count < 0) return
-    updateDroneCount.mutate(count)
   }
 
   const handleDroneUpdateIntervalChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -181,7 +219,6 @@ const ServerSettingsTab = (): React.JSX.Element => {
 
   const isBaseMoveDurationUpdating = updateBaseMoveDuration.isPending
   const isHeartbeatIntervalUpdating = updateHeartbeatInterval.isPending
-  const isDroneCountUpdating = updateDroneCount.isPending
   const isDroneUpdateIntervalUpdating = updateDroneUpdateInterval.isPending
   const isDroneVerticalSpeedUpdating = updateDroneVerticalSpeed.isPending
   const isDroneFlySpeedUpdating = updateDroneFlySpeed.isPending
@@ -191,7 +228,6 @@ const ServerSettingsTab = (): React.JSX.Element => {
     serverConfig && baseMoveDurationInput === String(serverConfig.baseMoveDuration)
   const isHeartbeatIntervalUnchanged =
     serverConfig && heartbeatIntervalInput === String(serverConfig.heartbeatInterval)
-  const isDroneCountUnchanged = droneCountInput === String(drones.length)
   const isDroneUpdateIntervalUnchanged =
     serverConfig && droneUpdateIntervalInput === String(serverConfig.droneUpdateInterval)
   const isDroneVerticalSpeedUnchanged =
@@ -325,30 +361,7 @@ const ServerSettingsTab = (): React.JSX.Element => {
             </button>
           </div>
         </div>
-        <div className={styles.durationRow}>
-          <label className={styles.statusLabel}>드론 수:</label>
-          <div className={styles.durationInputGroup}>
-            <input
-              type="number"
-              value={droneCountInput}
-              onChange={handleDroneCountChange}
-              className={styles.durationInput}
-              min="0"
-              step="1"
-              disabled={!isConnected || isDroneCountUpdating}
-              placeholder="-"
-            />
-            <button
-              onClick={handleApplyDroneCount}
-              className={styles.applyButton}
-              disabled={
-                !isConnected || !droneCountInput || isDroneCountUpdating || isDroneCountUnchanged
-              }
-            >
-              {isDroneCountUpdating ? <Loader2 size={14} className={styles.spinner} /> : '적용'}
-            </button>
-          </div>
-        </div>
+        <DroneCountInput isConnected={isConnected} />
         <div className={styles.durationRow}>
           <label className={styles.statusLabel}>드론 업데이트 주기 (ms):</label>
           <div className={styles.durationInputGroup}>

@@ -12,11 +12,7 @@ export interface ClusteringResult {
 }
 
 // 위경도를 픽셀 좌표로 변환 (Mercator projection)
-function latLngToPixel(
-  lat: number,
-  lng: number,
-  zoom: number
-): { x: number; y: number } {
+function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: number } {
   const scale = Math.pow(2, zoom) * 256
   const x = ((lng + 180) / 360) * scale
   const latRad = (lat * Math.PI) / 180
@@ -25,10 +21,7 @@ function latLngToPixel(
 }
 
 // 두 픽셀 좌표 간 거리 계산
-function pixelDistance(
-  p1: { x: number; y: number },
-  p2: { x: number; y: number }
-): number {
+function pixelDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {
   const dx = p1.x - p2.x
   const dy = p1.y - p2.y
   return Math.sqrt(dx * dx + dy * dy)

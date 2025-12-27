@@ -55,9 +55,7 @@ const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
     rootRef.current = root
 
     // 초기 렌더링
-    root.render(
-      <MarkerContent count={cluster.drones.length} onClick={() => onClick?.(cluster)} />
-    )
+    root.render(<MarkerContent count={cluster.drones.length} onClick={() => onClick?.(cluster)} />)
 
     // AdvancedMarkerElement 생성
     const marker = new google.maps.marker.AdvancedMarkerElement({

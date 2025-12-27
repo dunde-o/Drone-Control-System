@@ -5,10 +5,22 @@
 
 .container {
   @extend %tabContainer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .section {
   margin-bottom: vars.$spacing-xxl;
+
+  // 드론 목록 섹션은 남은 공간을 채우도록
+  &:last-child {
+    flex: 1;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; // flex 컨테이너 내 오버플로우 허용
+  }
 }
 
 .sectionHeader {
@@ -197,6 +209,28 @@
   display: flex;
   flex-direction: column;
   gap: vars.$spacing-sm;
+  flex: 1;
+  min-height: 0; // flex 컨테이너 내 오버플로우 허용
+  overflow-y: auto;
+  padding-right: vars.$spacing-xs;
+
+  // 스크롤바 스타일
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: vars.$color-border;
+    border-radius: 3px;
+
+    &:hover {
+      background-color: vars.$color-text-muted;
+    }
+  }
 }
 
 .droneCard {

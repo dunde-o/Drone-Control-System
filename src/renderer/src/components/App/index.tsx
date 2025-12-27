@@ -28,14 +28,21 @@ const App = (): React.JSX.Element => {
   const [selectedMarker, setSelectedMarker] = useState<MarkerInfo | null>(null)
   const [serverHost, setServerHost] = useState(DEFAULT_SERVER_HOST)
   const [serverPort, setServerPort] = useState(DEFAULT_SERVER_PORT)
-  const [isConnected, setIsConnected] = useState(false)
+  const [isServerRunning, setIsServerRunning] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connected' | 'connecting'>('disconnected')
+  const [showHeartbeatLog, setShowHeartbeatLog] = useState(false)
+  const wsRef = useRef<WebSocket | null>(null)
+  const heartbeatFailCountRef = useRef(0)
+  const heartbeatTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const showHeartbeatLogRef = useRef(showHeartbeatLog)
   const activeTabRef = useRef(activeTab)
   const drawerOpenRef = useRef(drawerOpen)
 
   useEffect(() => {
     activeTabRef.current = activeTab
     drawerOpenRef.current = drawerOpen
-  }, [activeTab, drawerOpen])
+    showHeartbeatLogRef.current = showHeartbeatLog
+  }, [activeTab, drawerOpen, showHeartbeatLog])
 
   useEffect(() => {
     if (isPickingBase) {
@@ -72,18 +79,111 @@ const App = (): React.JSX.Element => {
     setServerPort(e.target.value)
   }
 
-  const handleApplyServer = (): void => {
-    // TODO: Apply server settings
+  const connectToServer = useCallback((): void => {
+    if (wsRef.current) {
+      wsRef.current.close()
+    }
+
+    setConnectionStatus('connecting')
+    heartbeatFailCountRef.current = 0
+
+    const ws = new WebSocket(`ws://${serverHost}:${serverPort}`)
+    wsRef.current = ws
+
+    ws.onopen = (): void => {
+      console.info('[Client] Connected to server')
+      setConnectionStatus('connected')
+      heartbeatFailCountRef.current = 0
+    }
+
+    ws.onmessage = (event): void => {
+      try {
+        const message = JSON.parse(event.data)
+
+        if (message.type === 'heartbeat') {
+          if (showHeartbeatLogRef.current) {
+            console.info('[Client] Received:', message)
+          }
+          // Reset fail count on successful heartbeat
+          heartbeatFailCountRef.current = 0
+          setConnectionStatus('connected')
+
+          // Clear previous timeout
+          if (heartbeatTimeoutRef.current) {
+            clearTimeout(heartbeatTimeoutRef.current)
+          }
+
+          // Set timeout for next heartbeat (expect within 5 seconds)
+          heartbeatTimeoutRef.current = setTimeout(() => {
+            heartbeatFailCountRef.current += 1
+            console.info('[Client] Heartbeat missed, fail count:', heartbeatFailCountRef.current)
+
+            if (heartbeatFailCountRef.current >= 3) {
+              console.info('[Client] 3 heartbeats missed, disconnecting')
+              setConnectionStatus('disconnected')
+              ws.close()
+            }
+          }, 5000)
+        } else {
+          // Log non-heartbeat messages always
+          console.info('[Client] Received:', message)
+        }
+      } catch {
+        console.error('[Client] Failed to parse message')
+      }
+    }
+
+    ws.onerror = (): void => {
+      console.error('[Client] WebSocket error')
+      setConnectionStatus('disconnected')
+    }
+
+    ws.onclose = (): void => {
+      console.info('[Client] Disconnected from server')
+      wsRef.current = null
+      if (heartbeatTimeoutRef.current) {
+        clearTimeout(heartbeatTimeoutRef.current)
+        heartbeatTimeoutRef.current = null
+      }
+    }
+  }, [serverHost, serverPort])
+
+  const disconnectFromServer = useCallback((): void => {
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current)
+      heartbeatTimeoutRef.current = null
+    }
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+    setConnectionStatus('disconnected')
+  }, [])
+
+  const handleStartServer = async (): Promise<void> => {
+    const result = await window.api.server.start({
+      host: serverHost,
+      port: parseInt(serverPort, 10)
+    })
+    if (result.success) {
+      setIsServerRunning(true)
+      // Connect to server after starting
+      setTimeout(() => connectToServer(), 500)
+    } else {
+      console.error('Failed to start server:', result.error)
+    }
   }
 
-  const handleConnect = (): void => {
-    // TODO: Implement connection logic
-    setIsConnected(true)
-  }
+  const handleStopServer = async (): Promise<void> => {
+    // Disconnect WebSocket client first
+    disconnectFromServer()
 
-  const handleDisconnect = (): void => {
-    // TODO: Implement disconnection logic
-    setIsConnected(false)
+    const result = await window.api.server.stop()
+    if (result.success) {
+      setIsServerRunning(false)
+    } else {
+      console.error('Failed to stop server:', result.error)
+    }
   }
 
   const handleChangeBaseLatInput = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -226,10 +326,12 @@ const App = (): React.JSX.Element => {
             serverPort,
             onServerHostChange: handleChangeServerHost,
             onServerPortChange: handleChangeServerPort,
-            onApplyServer: handleApplyServer,
-            isConnected,
-            onConnect: handleConnect,
-            onDisconnect: handleDisconnect
+            isServerRunning,
+            connectionStatus,
+            onStartServer: handleStartServer,
+            onStopServer: handleStopServer,
+            showHeartbeatLog,
+            onToggleHeartbeatLog: () => setShowHeartbeatLog((prev) => !prev)
           }}
         />
       </Drawer>

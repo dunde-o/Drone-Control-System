@@ -30,10 +30,12 @@ const TabContent = ({ activeTabId, tabProps }: TabContentProps): React.JSX.Eleme
         serverPort={tabProps.serverPort}
         onServerHostChange={tabProps.onServerHostChange}
         onServerPortChange={tabProps.onServerPortChange}
-        onApplyServer={tabProps.onApplyServer}
-        isConnected={tabProps.isConnected}
-        onConnect={tabProps.onConnect}
-        onDisconnect={tabProps.onDisconnect}
+        isServerRunning={tabProps.isServerRunning}
+        connectionStatus={tabProps.connectionStatus}
+        onStartServer={tabProps.onStartServer}
+        onStopServer={tabProps.onStopServer}
+        showHeartbeatLog={tabProps.showHeartbeatLog}
+        onToggleHeartbeatLog={tabProps.onToggleHeartbeatLog}
       />
     ),
     api: (

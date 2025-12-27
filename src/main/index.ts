@@ -2,8 +2,10 @@ import { app, shell, BrowserWindow, ipcMain, globalShortcut, Menu } from 'electr
 import { join } from 'path'
 import { electronApp, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import DroneServer from '../server'
 
 let mainWindow: BrowserWindow | null = null
+let droneServer: DroneServer | null = null
 
 function createWindow(): void {
   // Create the browser window.
@@ -62,6 +64,63 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  // Server IPC handlers
+  ipcMain.handle('server:start', async (_, config: { host: string; port: number }) => {
+    try {
+      if (droneServer?.isRunning()) {
+        await droneServer.stop()
+      }
+
+      droneServer = new DroneServer(config)
+
+      droneServer.on('clientConnected', (count) => {
+        mainWindow?.webContents.send('server:client-count', count)
+      })
+
+      droneServer.on('clientDisconnected', (count) => {
+        mainWindow?.webContents.send('server:client-count', count)
+      })
+
+      droneServer.on('configUpdate', (payload) => {
+        mainWindow?.webContents.send('server:config-updated', payload)
+      })
+
+      await droneServer.start()
+      return { success: true }
+    } catch (error) {
+      console.error('[Main] Failed to start server:', error)
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
+  ipcMain.handle('server:stop', async () => {
+    try {
+      if (droneServer) {
+        await droneServer.stop()
+        droneServer = null
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('[Main] Failed to stop server:', error)
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
+  ipcMain.handle('server:status', () => {
+    return {
+      running: droneServer?.isRunning() ?? false,
+      clientCount: droneServer?.getClientCount() ?? 0
+    }
+  })
+
+  ipcMain.handle('server:broadcast', (_, message: { type: string; payload?: unknown }) => {
+    if (droneServer?.isRunning()) {
+      droneServer.broadcast(message)
+      return { success: true }
+    }
+    return { success: false, error: 'Server is not running' }
+  })
+
   createWindow()
 
   // Register global shortcuts for Ctrl+1,2,3
@@ -83,7 +142,12 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  // Stop server before quitting
+  if (droneServer?.isRunning()) {
+    await droneServer.stop()
+  }
+
   if (process.platform !== 'darwin') {
     app.quit()
   }

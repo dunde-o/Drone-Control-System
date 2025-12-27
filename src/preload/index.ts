@@ -1,10 +1,48 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+// Server API types
+interface ServerConfig {
+  host: string
+  port: number
+}
+
+interface ServerResult {
+  success: boolean
+  error?: string
+}
+
+interface ServerStatus {
+  running: boolean
+  clientCount: number
+}
+
 // Custom APIs for renderer
 const api = {
   onSwitchTab: (callback: (tabIndex: number) => void) => {
     ipcRenderer.on('switch-tab', (_event, tabIndex: number) => callback(tabIndex))
+  },
+
+  // Server control APIs
+  server: {
+    start: (config: ServerConfig): Promise<ServerResult> => {
+      return ipcRenderer.invoke('server:start', config)
+    },
+    stop: (): Promise<ServerResult> => {
+      return ipcRenderer.invoke('server:stop')
+    },
+    getStatus: (): Promise<ServerStatus> => {
+      return ipcRenderer.invoke('server:status')
+    },
+    broadcast: (message: { type: string; payload?: unknown }): Promise<ServerResult> => {
+      return ipcRenderer.invoke('server:broadcast', message)
+    },
+    onClientCount: (callback: (count: number) => void) => {
+      ipcRenderer.on('server:client-count', (_event, count: number) => callback(count))
+    },
+    onConfigUpdated: (callback: (payload: unknown) => void) => {
+      ipcRenderer.on('server:config-updated', (_event, payload: unknown) => callback(payload))
+    }
   }
 }
 

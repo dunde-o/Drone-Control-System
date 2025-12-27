@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '~styles/variables' as vars;
 @use '~styles/mixins' as *;
 @use '~components/tabs/common' as *;
@@ -10,6 +11,20 @@
   margin-bottom: vars.$spacing-lg;
 }
 
+.addressRow {
+  display: flex;
+  gap: vars.$spacing-md;
+  margin-bottom: vars.$spacing-lg;
+}
+
+.hostSection {
+  flex: 1;
+}
+
+.portSection {
+  flex-shrink: 0;
+}
+
 .label {
   @extend %labelText;
 }
@@ -19,34 +34,31 @@
   width: 100%;
 }
 
-.buttonGroup {
-  display: flex;
-  gap: vars.$spacing-sm;
-  margin-bottom: vars.$spacing-xl;
-}
-
-.button {
-  @include button-primary;
-  flex: 1;
+.portInput {
+  @include input-field;
+  width: 60px;
+  text-align: center;
 }
 
 .connectButton {
   @include button-primary;
-  flex: 1;
+  width: 100%;
+  margin-bottom: vars.$spacing-xl;
   background-color: vars.$color-success;
 
   &:hover:not(:disabled) {
-    background-color: darken(#22c55e, 10%);
+    background-color: color.adjust(vars.$color-success, $lightness: -10%);
   }
 }
 
 .disconnectButton {
   @include button-primary;
-  flex: 1;
+  width: 100%;
+  margin-bottom: vars.$spacing-xl;
   background-color: vars.$color-danger;
 
   &:hover:not(:disabled) {
-    background-color: darken(#ef4444, 10%);
+    background-color: color.adjust(vars.$color-danger, $lightness: -10%);
   }
 }
 
@@ -78,6 +90,52 @@
   color: vars.$color-success;
 }
 
+.connecting {
+  color: vars.$color-warning;
+}
+
 .disconnected {
   color: vars.$color-danger;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:checked + .slider {
+      background-color: vars.$color-primary;
+    }
+
+    &:checked + .slider::before {
+      transform: translateX(20px);
+    }
+  }
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: vars.$color-border;
+  transition: vars.$transition-fast;
+  border-radius: 20px;
+
+  &::before {
+    position: absolute;
+    content: '';
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: vars.$transition-fast;
+    border-radius: 50%;
+  }
 }

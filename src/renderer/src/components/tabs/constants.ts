@@ -25,10 +25,12 @@ export interface TabProps {
   serverPort: string
   onServerHostChange: (e: ChangeEvent<HTMLInputElement>) => void
   onServerPortChange: (e: ChangeEvent<HTMLInputElement>) => void
-  onApplyServer: () => void
-  isConnected: boolean
-  onConnect: () => void
-  onDisconnect: () => void
+  isServerRunning: boolean
+  connectionStatus: 'disconnected' | 'connected' | 'connecting'
+  onStartServer: () => void
+  onStopServer: () => void
+  showHeartbeatLog: boolean
+  onToggleHeartbeatLog: () => void
 }
 
 export const TABS: TabConfig[] = [

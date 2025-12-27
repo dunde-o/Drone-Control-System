@@ -2,10 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 import { APIProvider, Map, MapMouseEvent } from '@vis.gl/react-google-maps'
 
-import { useApiKey, useBasePosition } from '@renderer/hooks/queries'
+import { useApiKey, useBaseMovement, useBasePosition } from '@renderer/hooks/queries'
 import Drawer from '@renderer/components/Drawer'
 import MarkerInfoDrawer, { MarkerInfo } from '@renderer/components/MarkerInfoDrawer'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
+import MovementPath from '@renderer/components/MovementPath'
 import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
 
@@ -29,6 +30,7 @@ const App = (): React.JSX.Element => {
   // React Query hooks
   const { apiKey } = useApiKey()
   const { data: basePosition } = useBasePosition()
+  const { data: baseMovement } = useBaseMovement()
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -151,6 +153,7 @@ const App = (): React.JSX.Element => {
             onClick={handleBaseMarkerClick}
           />
         )}
+        {baseMovement && <MovementPath movement={baseMovement} />}
       </Map>
 
       <MarkerInfoDrawer marker={selectedMarker} onClose={handleCloseMarkerInfo} />

@@ -1,5 +1,6 @@
 export { queryKeys } from './queryKeys'
 export { useApiKey } from './useApiKey'
+export { useBaseMovement } from './useBaseMovement'
 export { useBasePosition } from './useBasePosition'
 export { useConnectionStatus } from './useConnectionStatus'
 export { useHeartbeatLog } from './useHeartbeatLog'

@@ -39,6 +39,17 @@ export interface BasePositionPayload {
   lng: number
 }
 
+export interface BaseMovingPayload {
+  target: BasePosition
+  duration: number
+}
+
+export interface BaseMovement {
+  from: BasePosition
+  to: BasePosition
+  duration: number
+}
+
 export interface BaseMoveDurationPayload {
   duration: number
 }

@@ -3,6 +3,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@renderer/hooks/queries/queryKeys'
 import {
   BaseMoveDurationPayload,
+  BaseMovement,
+  BaseMovingPayload,
   BasePosition,
   BasePositionPayload,
   HeartbeatIntervalPayload,
@@ -37,7 +39,7 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
         handleBasePositionUpdated(message as WebSocketMessage<BasePositionPayload>)
         break
       case 'basePosition:moving':
-        console.info('[Client] Base position moving:', message.payload)
+        handleBasePositionMoving(message as WebSocketMessage<BaseMovingPayload>)
         break
       case 'basePosition:error':
         console.error('[Client] Base position update failed:', message.payload)
@@ -103,11 +105,29 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
     }, 5000)
   }
 
+  function handleBasePositionMoving(message: WebSocketMessage<BaseMovingPayload>): void {
+    console.info('[Client] Base position moving:', message.payload)
+    if (message.payload) {
+      const { target, duration } = message.payload
+      const currentPosition = queryClient.getQueryData<BasePosition>(queryKeys.map.basePosition())
+
+      if (currentPosition) {
+        queryClient.setQueryData<BaseMovement>(queryKeys.map.baseMovement(), {
+          from: currentPosition,
+          to: target,
+          duration
+        })
+      }
+    }
+  }
+
   function handleBasePositionUpdated(message: WebSocketMessage<BasePositionPayload>): void {
     console.info('[Client] Base position updated:', message.payload)
     if (message.payload) {
       const { lat, lng } = message.payload
       queryClient.setQueryData<BasePosition>(queryKeys.map.basePosition(), { lat, lng })
+      // Clear movement when position is updated
+      queryClient.setQueryData<BaseMovement | null>(queryKeys.map.baseMovement(), null)
     }
   }
 

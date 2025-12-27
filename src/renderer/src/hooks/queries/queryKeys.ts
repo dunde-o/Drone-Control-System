@@ -13,6 +13,7 @@ export const queryKeys = {
   map: {
     all: ['map'] as const,
     basePosition: () => [...queryKeys.map.all, 'basePosition'] as const,
+    baseMovement: () => [...queryKeys.map.all, 'baseMovement'] as const,
     selectedMarker: () => [...queryKeys.map.all, 'selectedMarker'] as const
   },
 

@@ -7,6 +7,11 @@ import {
   BaseMovingPayload,
   BasePosition,
   BasePositionPayload,
+  Drone,
+  DroneCountUpdatedPayload,
+  DronesUpdatePayload,
+  DroneUpdatedPayload,
+  DroneUpdateIntervalPayload,
   HeartbeatIntervalPayload,
   HeartbeatPayload,
   ServerConfig,
@@ -16,6 +21,7 @@ import {
 export interface MessageHandlerContext {
   queryClient: QueryClient
   showHeartbeatLogRef: React.RefObject<boolean>
+  showDroneLogRef: React.RefObject<boolean>
   heartbeatFailCountRef: React.MutableRefObject<number>
   heartbeatTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>
   onHeartbeatTimeout: () => void
@@ -25,6 +31,7 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
   const {
     queryClient,
     showHeartbeatLogRef,
+    showDroneLogRef,
     heartbeatFailCountRef,
     heartbeatTimeoutRef,
     onHeartbeatTimeout
@@ -56,6 +63,27 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       case 'heartbeatInterval:error':
         console.error('[Client] Heartbeat interval update failed:', message.payload)
         break
+      case 'droneCount:updated':
+        handleDroneCountUpdated(message as WebSocketMessage<DroneCountUpdatedPayload>)
+        break
+      case 'droneCount:error':
+        console.error('[Client] Drone count update failed:', message.payload)
+        break
+      case 'drone:updated':
+        handleDroneUpdated(message as WebSocketMessage<DroneUpdatedPayload>)
+        break
+      case 'drone:error':
+        console.error('[Client] Drone update failed:', message.payload)
+        break
+      case 'drones:update':
+        handleDronesUpdate(message as WebSocketMessage<DronesUpdatePayload>)
+        break
+      case 'droneUpdateInterval:updated':
+        handleDroneUpdateIntervalUpdated(message as WebSocketMessage<DroneUpdateIntervalPayload>)
+        break
+      case 'droneUpdateInterval:error':
+        console.error('[Client] Drone update interval update failed:', message.payload)
+        break
       default:
         console.info('[Client] Received:', message)
     }
@@ -78,12 +106,18 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
         queryClient.setQueryData<BasePosition>(queryKeys.map.basePosition(), { lat, lng })
       }
 
+      // Update drones list
+      if (message.payload?.drones) {
+        queryClient.setQueryData<Drone[]>(queryKeys.drones.list(), message.payload.drones)
+      }
+
       // Update server config
       if (message.payload?.config) {
-        const { baseMoveDuration, heartbeatInterval } = message.payload.config
+        const { baseMoveDuration, heartbeatInterval, droneUpdateInterval } = message.payload.config
         queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), {
           baseMoveDuration,
-          heartbeatInterval
+          heartbeatInterval,
+          droneUpdateInterval: droneUpdateInterval ?? 200
         })
       }
     }
@@ -137,7 +171,8 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       const { duration } = message.payload
       queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
         baseMoveDuration: duration,
-        heartbeatInterval: prev?.heartbeatInterval ?? 3000
+        heartbeatInterval: prev?.heartbeatInterval ?? 3000,
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200
       }))
     }
   }
@@ -150,7 +185,51 @@ export const createMessageHandler = (context: MessageHandlerContext) => {
       const { interval } = message.payload
       queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
         baseMoveDuration: prev?.baseMoveDuration ?? 0,
-        heartbeatInterval: interval
+        heartbeatInterval: interval,
+        droneUpdateInterval: prev?.droneUpdateInterval ?? 200
+      }))
+    }
+  }
+
+  function handleDroneCountUpdated(message: WebSocketMessage<DroneCountUpdatedPayload>): void {
+    console.info('[Client] Drone count updated:', message.payload)
+    if (message.payload) {
+      const { drones } = message.payload
+      queryClient.setQueryData<Drone[]>(queryKeys.drones.list(), drones)
+    }
+  }
+
+  function handleDroneUpdated(message: WebSocketMessage<DroneUpdatedPayload>): void {
+    console.info('[Client] Drone updated:', message.payload)
+    if (message.payload) {
+      const { drone } = message.payload
+      queryClient.setQueryData<Drone[]>(queryKeys.drones.list(), (prev) => {
+        if (!prev) return [drone]
+        return prev.map((d) => (d.id === drone.id ? drone : d))
+      })
+    }
+  }
+
+  function handleDronesUpdate(message: WebSocketMessage<DronesUpdatePayload>): void {
+    if (showDroneLogRef.current) {
+      console.info('[Client] Drones update:', message.payload)
+    }
+    if (message.payload) {
+      const { drones } = message.payload
+      queryClient.setQueryData<Drone[]>(queryKeys.drones.list(), drones)
+    }
+  }
+
+  function handleDroneUpdateIntervalUpdated(
+    message: WebSocketMessage<DroneUpdateIntervalPayload>
+  ): void {
+    console.info('[Client] Drone update interval updated:', message.payload)
+    if (message.payload) {
+      const { interval } = message.payload
+      queryClient.setQueryData<ServerConfig>(queryKeys.server.config(), (prev) => ({
+        baseMoveDuration: prev?.baseMoveDuration ?? 0,
+        heartbeatInterval: prev?.heartbeatInterval ?? 3000,
+        droneUpdateInterval: interval
       }))
     }
   }

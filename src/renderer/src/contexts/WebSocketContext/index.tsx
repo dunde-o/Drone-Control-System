@@ -21,10 +21,22 @@ export const WebSocketProvider = ({ children }: PropsWithChildren): React.JSX.El
   })
   const showHeartbeatLogRef = useRef(showHeartbeatLog)
 
-  // Update ref in effect to avoid lint error
+  // Get showDroneLog from query cache
+  const { data: showDroneLog = false } = useQuery({
+    queryKey: queryKeys.settings.droneLog(),
+    queryFn: () => false,
+    staleTime: Infinity
+  })
+  const showDroneLogRef = useRef(showDroneLog)
+
+  // Update refs in effect to avoid lint error
   useEffect(() => {
     showHeartbeatLogRef.current = showHeartbeatLog
   }, [showHeartbeatLog])
+
+  useEffect(() => {
+    showDroneLogRef.current = showDroneLog
+  }, [showDroneLog])
 
   const clearConnection = useCallback((): void => {
     queryClient.setQueryData(queryKeys.connection.status(), 'disconnected')
@@ -46,6 +58,7 @@ export const WebSocketProvider = ({ children }: PropsWithChildren): React.JSX.El
         const handler = createMessageHandler({
           queryClient,
           showHeartbeatLogRef,
+          showDroneLogRef,
           heartbeatFailCountRef,
           heartbeatTimeoutRef,
           onHeartbeatTimeout: handleHeartbeatTimeout

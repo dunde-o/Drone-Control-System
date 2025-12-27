@@ -1,0 +1,26 @@
+@use '~styles/variables' as vars;
+@use '~components/markers/common' as *;
+
+.wrapper {
+  @extend %marker-wrapper;
+}
+
+.marker {
+  @extend %marker-base;
+  --marker-color: #{vars.$color-success};
+  background-color: vars.$color-success;
+  width: 36px;
+  height: 36px;
+
+  &:hover:not(.selected) {
+    @extend %marker-hover;
+  }
+
+  &.selected {
+    @extend %marker-selected;
+  }
+}
+
+.pulse {
+  @extend %marker-pulse;
+}

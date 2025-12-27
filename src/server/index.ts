@@ -10,6 +10,7 @@ export interface ServerConfig {
   }
   baseMoveDuration?: number
   heartbeatInterval?: number
+  droneUpdateInterval?: number
 }
 
 export interface ServerMessage {
@@ -22,18 +23,34 @@ export interface BasePosition {
   lng: number
 }
 
+export interface Drone {
+  id: string
+  name: string
+  position: {
+    lat: number
+    lng: number
+  }
+  status: 'idle' | 'flying' | 'returning' | 'charging'
+  battery: number
+}
+
 const DEFAULT_HEARTBEAT_INTERVAL = 3000 // 3 seconds
 const DEFAULT_BASE_MOVE_DURATION = 1000 // 1 second
+const DEFAULT_DRONE_UPDATE_INTERVAL = 200 // 0.2 seconds
 
 class DroneServer extends EventEmitter {
   private wss: WebSocketServer | null = null
   private config: ServerConfig
   private clients: Set<WebSocket> = new Set()
   private heartbeatTimer: NodeJS.Timeout | null = null
+  private droneUpdateTimer: NodeJS.Timeout | null = null
   private basePosition: BasePosition
   private baseMoveDuration: number
   private heartbeatInterval: number
+  private droneUpdateInterval: number
   private baseMoveTimeout: NodeJS.Timeout | null = null
+  private drones: Map<string, Drone> = new Map()
+  private droneIdCounter: number = 0
 
   constructor(config: ServerConfig) {
     super()
@@ -41,6 +58,7 @@ class DroneServer extends EventEmitter {
     this.basePosition = config.basePosition || { lat: 0, lng: 0 }
     this.baseMoveDuration = config.baseMoveDuration ?? DEFAULT_BASE_MOVE_DURATION
     this.heartbeatInterval = config.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL
+    this.droneUpdateInterval = config.droneUpdateInterval ?? DEFAULT_DRONE_UPDATE_INTERVAL
   }
 
   start(): Promise<void> {
@@ -61,6 +79,7 @@ class DroneServer extends EventEmitter {
             `[Server] WebSocket server started on ws://${this.config.host}:${this.config.port}`
           )
           this.startHeartbeat()
+          this.startDroneUpdates()
           this.emit('started')
           resolve()
         })
@@ -77,9 +96,11 @@ class DroneServer extends EventEmitter {
               init: true,
               timestamp: Date.now(),
               basePosition: this.basePosition,
+              drones: this.getDronesArray(),
               config: {
                 baseMoveDuration: this.baseMoveDuration,
-                heartbeatInterval: this.heartbeatInterval
+                heartbeatInterval: this.heartbeatInterval,
+                droneUpdateInterval: this.droneUpdateInterval
               }
             }
           })
@@ -119,6 +140,7 @@ class DroneServer extends EventEmitter {
   stop(): Promise<void> {
     return new Promise((resolve) => {
       this.stopHeartbeat()
+      this.stopDroneUpdates()
 
       if (!this.wss) {
         resolve()
@@ -165,6 +187,29 @@ class DroneServer extends EventEmitter {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer)
       this.heartbeatTimer = null
+    }
+  }
+
+  private startDroneUpdates(): void {
+    this.droneUpdateTimer = setInterval(() => {
+      if (this.drones.size > 0) {
+        this.broadcast({
+          type: 'drones:update',
+          payload: { drones: this.getDronesArray() }
+        })
+      }
+    }, this.droneUpdateInterval)
+  }
+
+  private restartDroneUpdates(): void {
+    this.stopDroneUpdates()
+    this.startDroneUpdates()
+  }
+
+  private stopDroneUpdates(): void {
+    if (this.droneUpdateTimer) {
+      clearInterval(this.droneUpdateTimer)
+      this.droneUpdateTimer = null
     }
   }
 
@@ -262,6 +307,69 @@ class DroneServer extends EventEmitter {
         break
       }
 
+      case 'droneCount:update': {
+        const payload = message.payload as { count?: number } | undefined
+        if (payload && typeof payload.count === 'number' && payload.count >= 0) {
+          this.setDroneCount(payload.count)
+
+          this.broadcast({
+            type: 'droneCount:updated',
+            payload: { count: this.drones.size, drones: this.getDronesArray() }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'droneCount:error',
+            payload: { error: 'Invalid count value (minimum 0)' }
+          })
+        }
+        break
+      }
+
+      case 'droneUpdateInterval:update': {
+        const payload = message.payload as { interval?: number } | undefined
+        if (payload && typeof payload.interval === 'number' && payload.interval >= 100) {
+          this.droneUpdateInterval = payload.interval
+          console.log('[Server] Drone update interval updated:', this.droneUpdateInterval)
+
+          // Restart drone updates with new interval
+          this.restartDroneUpdates()
+
+          this.broadcast({
+            type: 'droneUpdateInterval:updated',
+            payload: { interval: this.droneUpdateInterval }
+          })
+        } else {
+          this.sendToClient(ws, {
+            type: 'droneUpdateInterval:error',
+            payload: { error: 'Invalid interval value (minimum 100ms)' }
+          })
+        }
+        break
+      }
+
+      case 'drone:start': {
+        const payload = message.payload as { droneId?: string } | undefined
+        if (payload && payload.droneId) {
+          const drone = this.drones.get(payload.droneId)
+          if (drone && drone.status === 'idle') {
+            drone.status = 'flying'
+            drone.position = { ...this.basePosition }
+            console.log(`[Server] Drone ${drone.id} started flying from base`)
+
+            this.broadcast({
+              type: 'drone:updated',
+              payload: { drone }
+            })
+          } else {
+            this.sendToClient(ws, {
+              type: 'drone:error',
+              payload: { error: 'Drone not found or not in idle state' }
+            })
+          }
+        }
+        break
+      }
+
       case 'config:update':
         this.emit('configUpdate', message.payload)
         this.broadcast({
@@ -308,6 +416,56 @@ class DroneServer extends EventEmitter {
 
   getBaseMoveDuration(): number {
     return this.baseMoveDuration
+  }
+
+  getDronesArray(): Drone[] {
+    return Array.from(this.drones.values())
+  }
+
+  getDroneCount(): number {
+    return this.drones.size
+  }
+
+  private createDrone(): Drone {
+    const id = `drone-${++this.droneIdCounter}`
+    // Random position near base
+    const offsetLat = (Math.random() - 0.5) * 0.01
+    const offsetLng = (Math.random() - 0.5) * 0.01
+
+    return {
+      id,
+      name: `Drone ${this.droneIdCounter}`,
+      position: {
+        lat: this.basePosition.lat + offsetLat,
+        lng: this.basePosition.lng + offsetLng
+      },
+      status: 'idle',
+      battery: 100
+    }
+  }
+
+  setDroneCount(count: number): void {
+    const currentCount = this.drones.size
+    const diff = count - currentCount
+
+    if (diff > 0) {
+      // Add drones
+      for (let i = 0; i < diff; i++) {
+        const drone = this.createDrone()
+        this.drones.set(drone.id, drone)
+      }
+    } else if (diff < 0) {
+      // Remove drones (remove from the end)
+      const droneIds = Array.from(this.drones.keys())
+      for (let i = 0; i < Math.abs(diff); i++) {
+        const idToRemove = droneIds.pop()
+        if (idToRemove) {
+          this.drones.delete(idToRemove)
+        }
+      }
+    }
+
+    console.log(`[Server] Drone count updated: ${this.drones.size}`)
   }
 }
 

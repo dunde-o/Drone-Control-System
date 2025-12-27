@@ -2,10 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-maps'
 
-import { useApiKey, useBaseMovement, useBasePosition } from '@renderer/hooks/queries'
+import { useApiKey, useBaseMovement, useBasePosition, useDrones } from '@renderer/hooks/queries'
 import Drawer from '@renderer/components/Drawer'
 import MarkerInfoDrawer, { MarkerInfo } from '@renderer/components/MarkerInfoDrawer'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
+import DroneMarker from '@renderer/components/markers/DroneMarker'
 import MovementPath from '@renderer/components/MovementPath'
 import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
@@ -51,6 +52,7 @@ const App = (): React.JSX.Element => {
   const { apiKey } = useApiKey()
   const { data: basePosition } = useBasePosition()
   const { data: baseMovement } = useBaseMovement()
+  const { data: drones = [] } = useDrones()
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -186,6 +188,9 @@ const App = (): React.JSX.Element => {
             onClick={handleBaseMarkerClick}
           />
         )}
+        {drones.map((drone) => (
+          <DroneMarker key={drone.id} drone={drone} isSelected={selectedMarker?.id === drone.id} />
+        ))}
         {baseMovement && <MovementPath movement={baseMovement} />}
         <MapController onPanToBase={handleSetPanTo} />
       </Map>

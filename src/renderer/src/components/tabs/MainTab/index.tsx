@@ -1,11 +1,73 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 
-import { Loader2, Locate, MapPinned, X } from 'lucide-react'
+import { Battery, Loader2, Locate, MapPinned, Play, X } from 'lucide-react'
 
 import { useUpdateBasePosition } from '@renderer/hooks/mutations'
-import { useBasePosition, useConnectionStatus } from '@renderer/hooks/queries'
+import { useWebSocket } from '@renderer/contexts/WebSocketContext'
+import { useBasePosition, useConnectionStatus, useDrones } from '@renderer/hooks/queries'
+import { Drone } from '@renderer/contexts/WebSocketContext/types'
 
 import styles from './styles.module.scss'
+
+interface DroneCardProps {
+  drone: Drone
+  onStart: () => void
+}
+
+const DroneCard = ({ drone, onStart }: DroneCardProps): React.JSX.Element => {
+  const getStatusText = (status: Drone['status']): string => {
+    switch (status) {
+      case 'idle':
+        return '대기 중'
+      case 'flying':
+        return '비행 중'
+      case 'returning':
+        return '귀환 중'
+      case 'charging':
+        return '충전 중'
+      default:
+        return status
+    }
+  }
+
+  const getStatusClass = (status: Drone['status']): string => {
+    switch (status) {
+      case 'idle':
+        return styles.statusIdle
+      case 'flying':
+        return styles.statusFlying
+      case 'returning':
+        return styles.statusReturning
+      case 'charging':
+        return styles.statusCharging
+      default:
+        return ''
+    }
+  }
+
+  return (
+    <div className={styles.droneCard}>
+      <div className={styles.droneHeader}>
+        <span className={styles.droneName}>{drone.name}</span>
+        <span className={`${styles.droneStatus} ${getStatusClass(drone.status)}`}>
+          {getStatusText(drone.status)}
+        </span>
+      </div>
+      <div className={styles.droneInfo}>
+        <div className={styles.droneBattery}>
+          <Battery size={14} />
+          <span>{drone.battery}%</span>
+        </div>
+      </div>
+      {drone.status === 'idle' && (
+        <button className={styles.droneStartButton} onClick={onStart}>
+          <Play size={14} />
+          시작
+        </button>
+      )}
+    </div>
+  )
+}
 
 interface MainTabProps {
   isPickingBase: boolean
@@ -24,7 +86,9 @@ const MainTab = ({
 }: MainTabProps): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
   const { data: basePosition } = useBasePosition()
+  const { data: drones = [] } = useDrones()
   const updateBasePosition = useUpdateBasePosition()
+  const { sendMessage } = useWebSocket()
 
   const [baseLatInput, setBaseLatInput] = useState('')
   const [baseLngInput, setBaseLngInput] = useState('')
@@ -147,6 +211,26 @@ const MainTab = ({
             : '드론의 이착륙 기지 위치를 설정합니다'}
         </p>
       </div>
+
+      {drones.length > 0 && (
+        <div className={styles.section}>
+          <h3>드론 목록</h3>
+          <div className={styles.droneList}>
+            {drones.map((drone: Drone) => (
+              <DroneCard
+                key={drone.id}
+                drone={drone}
+                onStart={() => {
+                  sendMessage({
+                    type: 'drone:start',
+                    payload: { droneId: drone.id }
+                  })
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

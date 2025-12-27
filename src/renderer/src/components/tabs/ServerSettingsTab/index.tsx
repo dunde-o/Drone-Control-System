@@ -69,7 +69,9 @@ const DroneCountInput = memo(({ isConnected }: DroneCountInputProps): React.JSX.
         <button
           onClick={handleApplyDroneCount}
           className={styles.applyButton}
-          disabled={!isConnected || !droneCountInput || isDroneCountUpdating || isDroneCountUnchanged}
+          disabled={
+            !isConnected || !droneCountInput || isDroneCountUpdating || isDroneCountUnchanged
+          }
         >
           {isDroneCountUpdating ? <Loader2 size={14} className={styles.spinner} /> : '적용'}
         </button>

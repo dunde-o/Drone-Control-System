@@ -34,6 +34,19 @@
   }
 }
 
+.baseHeader {
+  display: flex;
+  align-items: center;
+  gap: vars.$spacing-xs;
+  margin-bottom: vars.$spacing-md;
+}
+
+.baseLabel {
+  font-size: vars.$font-size-sm;
+  color: vars.$color-text-muted;
+  font-weight: 500;
+}
+
 .panButton {
   display: flex;
   align-items: center;

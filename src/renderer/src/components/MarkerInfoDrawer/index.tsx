@@ -1,3 +1,5 @@
+import { ChangeEvent } from 'react'
+
 import {
   ArrowUpFromLine,
   BatteryFull,
@@ -5,6 +7,8 @@ import {
   BatteryMedium,
   BatteryWarning,
   Home,
+  Loader2,
+  MapPinned,
   Plane,
   PlaneLanding,
   PlaneTakeoff,
@@ -29,12 +33,26 @@ export interface MarkerInfo {
   details?: Record<string, string | number>
 }
 
+export interface BaseEditProps {
+  isPickingBase: boolean
+  onTogglePickBase: () => void
+  baseLatInput: string
+  baseLngInput: string
+  onBaseLatChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onBaseLngChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onApplyBase: () => void
+  isApplyDisabled: boolean
+  isInputDisabled: boolean
+  isBaseUpdating: boolean
+}
+
 interface MarkerInfoDrawerProps {
   marker: MarkerInfo | null
   onClose: () => void
   onTakeoff?: (droneId: string) => void
   onLand?: (droneId: string) => void
   onReturnToBase?: (droneId: string) => void
+  baseEditProps?: BaseEditProps
 }
 
 const STATUS_CONFIG: Record<DroneStatus, { label: string; className: string }> = {
@@ -78,7 +96,8 @@ const MarkerInfoDrawer = ({
   onClose,
   onTakeoff,
   onLand,
-  onReturnToBase
+  onReturnToBase,
+  baseEditProps
 }: MarkerInfoDrawerProps): React.JSX.Element | null => {
   if (!marker) return null
 
@@ -171,17 +190,75 @@ const MarkerInfoDrawer = ({
           </div>
         ) : (
           <>
-            <div className={styles.section}>
-              <h4 className={styles.sectionTitle}>위치</h4>
-              <div className={styles.info}>
-                <span className={styles.label}>위도</span>
-                <span className={styles.value}>{marker.position.lat.toFixed(6)}</span>
+            {baseEditProps ? (
+              <div className={styles.baseEditSection}>
+                <div className={styles.coordGroup}>
+                  <div className={styles.coordInput}>
+                    <label className={styles.coordLabel}>위도 (Latitude)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={baseEditProps.baseLatInput}
+                      onChange={baseEditProps.onBaseLatChange}
+                      placeholder="37.5665"
+                      className={styles.coordInputField}
+                      disabled={baseEditProps.isInputDisabled}
+                    />
+                  </div>
+                  <div className={styles.coordInput}>
+                    <label className={styles.coordLabel}>경도 (Longitude)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={baseEditProps.baseLngInput}
+                      onChange={baseEditProps.onBaseLngChange}
+                      placeholder="126.978"
+                      className={styles.coordInputField}
+                      disabled={baseEditProps.isInputDisabled}
+                    />
+                  </div>
+                </div>
+                <div className={styles.baseButtonGroup}>
+                  <button
+                    onClick={baseEditProps.onApplyBase}
+                    className={styles.applyButton}
+                    disabled={baseEditProps.isApplyDisabled}
+                  >
+                    {baseEditProps.isBaseUpdating ? (
+                      <>
+                        <Loader2 size={14} className={styles.spinner} />
+                        적용 중...
+                      </>
+                    ) : (
+                      '위치 적용'
+                    )}
+                  </button>
+                  <button
+                    onClick={baseEditProps.onTogglePickBase}
+                    className={`${styles.pickButton} ${baseEditProps.isPickingBase ? styles.active : ''}`}
+                    title={baseEditProps.isPickingBase ? '선택 취소' : '지도에서 선택'}
+                    disabled={baseEditProps.isInputDisabled}
+                  >
+                    {baseEditProps.isPickingBase ? <X size={18} /> : <MapPinned size={18} />}
+                  </button>
+                </div>
+                {baseEditProps.isPickingBase && (
+                  <p className={styles.pickingHint}>지도를 클릭하여 위치를 선택하세요</p>
+                )}
               </div>
-              <div className={styles.info}>
-                <span className={styles.label}>경도</span>
-                <span className={styles.value}>{marker.position.lng.toFixed(6)}</span>
+            ) : (
+              <div className={styles.section}>
+                <h4 className={styles.sectionTitle}>위치</h4>
+                <div className={styles.info}>
+                  <span className={styles.label}>위도</span>
+                  <span className={styles.value}>{marker.position.lat.toFixed(6)}</span>
+                </div>
+                <div className={styles.info}>
+                  <span className={styles.label}>경도</span>
+                  <span className={styles.value}>{marker.position.lng.toFixed(6)}</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {marker.details && Object.keys(marker.details).length > 0 && (
               <div className={styles.section}>

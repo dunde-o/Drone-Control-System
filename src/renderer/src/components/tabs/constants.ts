@@ -3,12 +3,7 @@ export interface TabConfig {
   label: string
 }
 
-// MainTab still needs props for map picking coordination
 export interface MainTabProps {
-  isPickingBase: boolean
-  onTogglePickBase: () => void
-  pickingLat: string
-  pickingLng: string
   onPanToBase?: () => void
   onTakeoff?: (droneId: string, droneName: string) => void
   onLand?: (droneId: string, droneName: string) => void

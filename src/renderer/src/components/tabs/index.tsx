@@ -13,10 +13,6 @@ const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.E
   const tabComponents: Record<string, React.JSX.Element> = {
     main: (
       <MainTab
-        isPickingBase={mainTabProps.isPickingBase}
-        onTogglePickBase={mainTabProps.onTogglePickBase}
-        pickingLat={mainTabProps.pickingLat}
-        pickingLng={mainTabProps.pickingLng}
         onPanToBase={mainTabProps.onPanToBase}
         onTakeoff={mainTabProps.onTakeoff}
         onLand={mainTabProps.onLand}

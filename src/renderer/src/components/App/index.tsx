@@ -234,6 +234,7 @@ const App = (): React.JSX.Element => {
   const handlePanToBase = useCallback((): void => {
     if (basePosition && panToRef.current) {
       panToRef.current(basePosition)
+      setSelectedMarkerId('base')
     }
   }, [basePosition])
 
@@ -512,6 +513,10 @@ const App = (): React.JSX.Element => {
         selectedMarkerId={selectedMarkerId}
         onClose={handleCloseMarkerInfo}
         onShowConfirmDialog={handleShowDroneConfirmDialog}
+        isPickingBase={isPickingBase}
+        onTogglePickBase={handleTogglePickBase}
+        pickingLat={pickingLat}
+        pickingLng={pickingLng}
       />
 
       <ConfirmDialog
@@ -568,10 +573,6 @@ const App = (): React.JSX.Element => {
         <TabContent
           activeTabId={activeTab}
           mainTabProps={{
-            isPickingBase,
-            onTogglePickBase: handleTogglePickBase,
-            pickingLat,
-            pickingLng,
             onPanToBase: handlePanToBase,
             onTakeoff: handleTakeoffRequest,
             onLand: handleLandRequest,

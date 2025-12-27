@@ -13,6 +13,7 @@ import {
   MapPinned,
   PlaneLanding,
   PlaneTakeoff,
+  Shuffle,
   X
 } from 'lucide-react'
 
@@ -139,6 +140,32 @@ const DroneCard = ({
   )
 }
 
+// 베이스 기준 5km ~ 10km 반경 내 랜덤 좌표 생성
+const generateRandomPosition = (
+  baseLat: number,
+  baseLng: number
+): { lat: number; lng: number } => {
+  // 5km ~ 10km 사이 랜덤 거리 (미터)
+  const minDistance = 5000
+  const maxDistance = 10000
+  const distance = minDistance + Math.random() * (maxDistance - minDistance)
+
+  // 랜덤 방향 (0 ~ 360도)
+  const bearing = Math.random() * 360
+
+  // 위도/경도 변환 (근사값)
+  const earthRadius = 6371000 // 지구 반지름 (미터)
+  const latOffset = (distance * Math.cos((bearing * Math.PI) / 180)) / earthRadius
+  const lngOffset =
+    (distance * Math.sin((bearing * Math.PI) / 180)) /
+    (earthRadius * Math.cos((baseLat * Math.PI) / 180))
+
+  return {
+    lat: baseLat + (latOffset * 180) / Math.PI,
+    lng: baseLng + (lngOffset * 180) / Math.PI
+  }
+}
+
 interface MainTabProps {
   isPickingBase: boolean
   onTogglePickBase: () => void
@@ -149,6 +176,12 @@ interface MainTabProps {
   onLand?: (droneId: string) => void
   onReturnToBase?: (droneId: string) => void
   onLocateDrone?: (droneId: string) => void
+  onRandomMove?: (droneId: string, lat: number, lng: number) => void
+  onDirectTakeoff?: (droneId: string) => void
+  onShowConfirmDialog?: (
+    type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
+    onConfirm: () => void
+  ) => void
 }
 
 const MainTab = ({
@@ -160,7 +193,10 @@ const MainTab = ({
   onTakeoff,
   onLand,
   onReturnToBase,
-  onLocateDrone
+  onLocateDrone,
+  onRandomMove,
+  onDirectTakeoff,
+  onShowConfirmDialog
 }: MainTabProps): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
   const { data: basePosition } = useBasePosition()
@@ -169,6 +205,39 @@ const MainTab = ({
 
   const [baseLatInput, setBaseLatInput] = useState('')
   const [baseLngInput, setBaseLngInput] = useState('')
+
+  // Bulk 액션 핸들러
+  const handleAllRandomMove = (): void => {
+    if (!basePosition) return
+    onShowConfirmDialog?.('allRandomMove', () => {
+      drones.forEach((drone) => {
+        if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
+          const randomPos = generateRandomPosition(basePosition.lat, basePosition.lng)
+          onRandomMove?.(drone.id, randomPos.lat, randomPos.lng)
+        }
+      })
+    })
+  }
+
+  const handleAllTakeoff = (): void => {
+    onShowConfirmDialog?.('allTakeoff', () => {
+      drones.forEach((drone) => {
+        if (drone.status === 'idle') {
+          onDirectTakeoff?.(drone.id)
+        }
+      })
+    })
+  }
+
+  const handleAllReturnToBase = (): void => {
+    onShowConfirmDialog?.('allReturnToBase', () => {
+      drones.forEach((drone) => {
+        if (['hovering', 'moving', 'returning', 'returning_auto'].includes(drone.status)) {
+          onReturnToBase?.(drone.id)
+        }
+      })
+    })
+  }
 
   // Track if user has modified inputs locally
   const isPickingBaseRef = useRef(isPickingBase)
@@ -291,7 +360,33 @@ const MainTab = ({
 
       {drones.length > 0 && (
         <div className={styles.section}>
-          <h3>드론 목록</h3>
+          <div className={styles.sectionHeader}>
+            <h3>드론 목록</h3>
+            <div className={styles.bulkActions}>
+              <button
+                className={`${styles.bulkButton} ${styles.randomButton}`}
+                onClick={handleAllRandomMove}
+                disabled={!basePosition}
+                title="전체 랜덤 이동"
+              >
+                <Shuffle size={14} />
+              </button>
+              <button
+                className={`${styles.bulkButton} ${styles.takeoffButton}`}
+                onClick={handleAllTakeoff}
+                title="전체 이륙"
+              >
+                <PlaneTakeoff size={14} />
+              </button>
+              <button
+                className={`${styles.bulkButton} ${styles.returnButton}`}
+                onClick={handleAllReturnToBase}
+                title="전체 복귀"
+              >
+                <Home size={14} />
+              </button>
+            </div>
+          </div>
           <div className={styles.droneList}>
             {drones.map((drone: Drone) => (
               <DroneCard

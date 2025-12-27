@@ -14,6 +14,12 @@ export interface MainTabProps {
   onLand?: (droneId: string) => void
   onReturnToBase?: (droneId: string) => void
   onLocateDrone?: (droneId: string) => void
+  onRandomMove?: (droneId: string, lat: number, lng: number) => void
+  onDirectTakeoff?: (droneId: string) => void
+  onShowConfirmDialog?: (
+    type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove',
+    onConfirm: () => void
+  ) => void
 }
 
 export const TABS: TabConfig[] = [

@@ -22,6 +22,9 @@ const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.E
         onLand={mainTabProps.onLand}
         onReturnToBase={mainTabProps.onReturnToBase}
         onLocateDrone={mainTabProps.onLocateDrone}
+        onRandomMove={mainTabProps.onRandomMove}
+        onDirectTakeoff={mainTabProps.onDirectTakeoff}
+        onShowConfirmDialog={mainTabProps.onShowConfirmDialog}
       />
     ),
     server: <ServerSettingsTab />,

@@ -4,7 +4,6 @@ import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-ma
 
 import { useApiKey, useBaseMovement, useBasePosition, useDrones } from '@renderer/hooks/queries'
 import { useWebSocket } from '@renderer/contexts/WebSocketContext'
-import { Drone } from '@renderer/contexts/WebSocketContext/types'
 import ConfirmDialog from '@renderer/components/ConfirmDialog'
 import Drawer from '@renderer/components/Drawer'
 import MarkerInfoDrawer from '@renderer/components/MarkerInfoDrawer'
@@ -98,9 +97,10 @@ const App = (): React.JSX.Element => {
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
-    type: 'takeoff' | 'land' | null
+    type: 'takeoff' | 'land' | 'allTakeoff' | 'allReturnToBase' | 'allRandomMove' | null
     droneId: string | null
     droneName: string | null
+    onBulkConfirm?: () => void
   }>({ isOpen: false, type: null, droneId: null, droneName: null })
 
   // Refs for closures
@@ -217,8 +217,8 @@ const App = (): React.JSX.Element => {
     setSelectedMarkerId('base')
   }, [])
 
-  const handleDroneMarkerClick = useCallback((drone: Drone): void => {
-    setSelectedMarkerId(drone.id)
+  const handleDroneMarkerClick = useCallback((droneId: string): void => {
+    setSelectedMarkerId(droneId)
   }, [])
 
   const handleCloseMarkerInfo = useCallback((): void => {
@@ -307,9 +307,24 @@ const App = (): React.JSX.Element => {
     [sendMessage]
   )
 
+  // 직접 이륙 (확인 다이얼로그 없이) - bulk 액션용
+  const handleDirectTakeoff = useCallback(
+    (droneId: string): void => {
+      sendMessage({
+        type: 'drone:takeoff',
+        payload: { droneId }
+      })
+    },
+    [sendMessage]
+  )
+
   // 확인 팝업에서 확인 클릭
   const handleConfirmAction = useCallback((): void => {
-    if (confirmDialog.droneId && confirmDialog.type) {
+    // Bulk 액션 처리
+    if (confirmDialog.onBulkConfirm) {
+      confirmDialog.onBulkConfirm()
+    } else if (confirmDialog.droneId && confirmDialog.type) {
+      // 개별 드론 액션 처리
       sendMessage({
         type: confirmDialog.type === 'takeoff' ? 'drone:takeoff' : 'drone:land',
         payload: { droneId: confirmDialog.droneId }
@@ -322,6 +337,35 @@ const App = (): React.JSX.Element => {
   const handleCancelConfirm = useCallback((): void => {
     setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
   }, [])
+
+  // Bulk 액션 확인 다이얼로그 표시
+  const handleShowBulkConfirmDialog = useCallback(
+    (type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove', onConfirm: () => void): void => {
+      setConfirmDialog({
+        isOpen: true,
+        type,
+        droneId: null,
+        droneName: null,
+        onBulkConfirm: onConfirm
+      })
+    },
+    []
+  )
+
+  // 드론 랜덤 이동 명령 (개별)
+  const handleRandomMove = useCallback(
+    (droneId: string, lat: number, lng: number): void => {
+      sendMessage({
+        type: 'drone:move',
+        payload: {
+          droneId,
+          waypoints: [{ lat, lng }],
+          append: false
+        }
+      })
+    },
+    [sendMessage]
+  )
 
   // 맵 우클릭으로 드론 이동 명령
   const handleMapContextMenu = useCallback(
@@ -419,12 +463,12 @@ const App = (): React.JSX.Element => {
             key={drone.id}
             drone={drone}
             isSelected={selectedMarker?.id === drone.id}
-            onClick={() => handleDroneMarkerClick(drone)}
+            onClick={handleDroneMarkerClick}
           />
         ))}
         {baseMovement && <MovementPath movement={baseMovement} />}
-        {drones.map((drone) =>
-          drone.waypoints.length > 0 ? <DronePath key={`path-${drone.id}`} drone={drone} /> : null
+        {selectedDrone && selectedDrone.waypoints.length > 0 && (
+          <DronePath drone={selectedDrone} />
         )}
         <MapController onPanToBase={handleSetPanTo} onDroneMove={handleDroneMove} />
       </Map>
@@ -439,13 +483,43 @@ const App = (): React.JSX.Element => {
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
-        title={confirmDialog.type === 'takeoff' ? '이륙 확인' : '착륙 확인'}
+        title={
+          confirmDialog.type === 'takeoff'
+            ? '이륙 확인'
+            : confirmDialog.type === 'land'
+              ? '착륙 확인'
+              : confirmDialog.type === 'allTakeoff'
+                ? '전체 이륙 확인'
+                : confirmDialog.type === 'allReturnToBase'
+                  ? '전체 복귀 확인'
+                  : confirmDialog.type === 'allRandomMove'
+                    ? '전체 랜덤 이동 확인'
+                    : '확인'
+        }
         message={
           confirmDialog.type === 'takeoff'
             ? `${confirmDialog.droneName}을(를) 이륙시키시겠습니까?`
-            : `${confirmDialog.droneName}을(를) 현재 위치에 착륙시키시겠습니까?`
+            : confirmDialog.type === 'land'
+              ? `${confirmDialog.droneName}을(를) 현재 위치에 착륙시키시겠습니까?`
+              : confirmDialog.type === 'allTakeoff'
+                ? '대기 중인 모든 드론을 이륙시키시겠습니까?'
+                : confirmDialog.type === 'allReturnToBase'
+                  ? '비행 중인 모든 드론을 베이스로 복귀시키시겠습니까?'
+                  : confirmDialog.type === 'allRandomMove'
+                    ? '비행 중인 모든 드론을 베이스 기준 5~10km 반경 내 랜덤 위치로 이동시키시겠습니까?'
+                    : ''
         }
-        confirmText={confirmDialog.type === 'takeoff' ? '이륙' : '착륙'}
+        confirmText={
+          confirmDialog.type === 'takeoff' || confirmDialog.type === 'allTakeoff'
+            ? '이륙'
+            : confirmDialog.type === 'land'
+              ? '착륙'
+              : confirmDialog.type === 'allReturnToBase'
+                ? '복귀'
+                : confirmDialog.type === 'allRandomMove'
+                  ? '이동'
+                  : '확인'
+        }
         cancelText="취소"
         variant={confirmDialog.type === 'land' ? 'danger' : 'primary'}
         onConfirm={handleConfirmAction}
@@ -469,7 +543,10 @@ const App = (): React.JSX.Element => {
             onTakeoff: handleTakeoffRequest,
             onLand: handleLandRequest,
             onReturnToBase: handleReturnToBase,
-            onLocateDrone: handleLocateDrone
+            onLocateDrone: handleLocateDrone,
+            onRandomMove: handleRandomMove,
+            onDirectTakeoff: handleDirectTakeoff,
+            onShowConfirmDialog: handleShowBulkConfirmDialog
           }}
         />
       </Drawer>

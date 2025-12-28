@@ -1,63 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+
 import { useMap } from '@vis.gl/react-google-maps'
 import { createRoot, Root } from 'react-dom/client'
-import { Plane, WifiOff } from 'lucide-react'
 
 import { Drone, DroneStatus } from '@renderer/contexts/WebSocketContext/types'
 
-import styles from './styles.module.scss'
+import MarkerContent from './MarkerContent'
 
 interface DroneMarkerProps {
   drone: Drone
   isSelected?: boolean
   onClick?: (droneId: string) => void
-}
-
-// 상태별 스타일 클래스 매핑
-const STATUS_STYLE_MAP: Record<DroneStatus, string> = {
-  idle: styles.statusIdle,
-  ascending: styles.statusAscending,
-  hovering: styles.statusHovering,
-  moving: styles.statusMoving,
-  mia: styles.statusMia,
-  returning: styles.statusReturning,
-  landing: styles.statusLanding,
-  returning_auto: styles.statusAuto,
-  landing_auto: styles.statusAuto
-}
-
-// 광원효과를 보여줄 상태 (idle과 mia는 제외)
-const shouldShowPulse = (status: DroneStatus): boolean => !['idle', 'mia'].includes(status)
-
-// 마커 내부 컨텐츠 컴포넌트
-interface MarkerContentProps {
-  status: DroneStatus
-  isSelected: boolean
-  onClick: () => void
-}
-
-const MarkerContent = ({ status, isSelected, onClick }: MarkerContentProps): React.JSX.Element => {
-  const statusClass = STATUS_STYLE_MAP[status] || ''
-  const showPulse = isSelected && shouldShowPulse(status)
-
-  return (
-    <div className={`${styles.wrapper} map-marker`}>
-      {showPulse && <span className={styles.pulse} />}
-      <div
-        className={`${styles.marker} ${statusClass} ${isSelected ? styles.selected : ''}`}
-        onClick={(e) => {
-          e.stopPropagation()
-          onClick()
-        }}
-      >
-        {status === 'mia' ? (
-          <WifiOff size={20} strokeWidth={2.5} />
-        ) : (
-          <Plane size={20} strokeWidth={2.5} />
-        )}
-      </div>
-    </div>
-  )
 }
 
 const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): null => {
@@ -70,6 +23,10 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
   const prevPositionRef = useRef<{ lat: number; lng: number } | null>(null)
   const prevStatusRef = useRef<DroneStatus | null>(null)
   const prevIsSelectedRef = useRef<boolean>(false)
+
+  const handleSelectDrone = useCallback((): void => {
+    onClick?.(drone.id)
+  }, [onClick, drone.id])
 
   // 마커 생성 (최초 1회)
   useEffect(() => {
@@ -85,11 +42,7 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
 
     // 초기 렌더링
     root.render(
-      <MarkerContent
-        status={drone.status}
-        isSelected={isSelected}
-        onClick={() => onClick?.(drone.id)}
-      />
+      <MarkerContent status={drone.status} isSelected={isSelected} onClick={handleSelectDrone} />
     )
 
     // AdvancedMarkerElement 생성
@@ -148,11 +101,7 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
 
     if (statusChanged || selectedChanged) {
       rootRef.current.render(
-        <MarkerContent
-          status={drone.status}
-          isSelected={isSelected}
-          onClick={() => onClick?.(drone.id)}
-        />
+        <MarkerContent status={drone.status} isSelected={isSelected} onClick={handleSelectDrone} />
       )
       prevStatusRef.current = drone.status
       prevIsSelectedRef.current = isSelected

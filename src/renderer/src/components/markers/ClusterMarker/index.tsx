@@ -1,35 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+
 import { useMap } from '@vis.gl/react-google-maps'
 import { createRoot, Root } from 'react-dom/client'
-import { Plane } from 'lucide-react'
 
 import { Cluster } from '@renderer/utils/mapClustering'
 
-import styles from './styles.module.scss'
+import MarkerContent from './MarkerContent'
 
 interface ClusterMarkerProps {
   cluster: Cluster
   onClick?: (cluster: Cluster) => void
-}
-
-// 마커 내부 컨텐츠 컴포넌트
-interface MarkerContentProps {
-  count: number
-  onClick: () => void
-}
-
-const MarkerContent = ({ count, onClick }: MarkerContentProps): React.JSX.Element => {
-  return (
-    <div className={`${styles.wrapper} map-marker`}>
-      <div className={styles.pulse} />
-      <div className={styles.marker} onClick={onClick}>
-        <div className={styles.icon}>
-          <Plane size={22} strokeWidth={2.5} />
-          <span className={styles.count}>{count > 99 ? '99+' : count}</span>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
@@ -41,6 +21,10 @@ const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
   // 이전 값 저장
   const prevPositionRef = useRef<{ lat: number; lng: number } | null>(null)
   const prevCountRef = useRef<number>(0)
+
+  const handleZoomToCluster = useCallback((): void => {
+    onClick?.(cluster)
+  }, [onClick, cluster])
 
   // 마커 생성 (최초 1회)
   useEffect(() => {
@@ -55,7 +39,7 @@ const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
     rootRef.current = root
 
     // 초기 렌더링
-    root.render(<MarkerContent count={cluster.drones.length} onClick={() => onClick?.(cluster)} />)
+    root.render(<MarkerContent count={cluster.drones.length} onClick={handleZoomToCluster} />)
 
     // AdvancedMarkerElement 생성
     const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -109,11 +93,11 @@ const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
 
     if (prevCountRef.current !== cluster.drones.length) {
       rootRef.current.render(
-        <MarkerContent count={cluster.drones.length} onClick={() => onClick?.(cluster)} />
+        <MarkerContent count={cluster.drones.length} onClick={handleZoomToCluster} />
       )
       prevCountRef.current = cluster.drones.length
     }
-  }, [cluster.drones.length, cluster, onClick])
+  }, [cluster.drones.length, handleZoomToCluster])
 
   return null
 }

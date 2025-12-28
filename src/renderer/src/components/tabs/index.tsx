@@ -10,26 +10,26 @@ interface TabContentProps {
 }
 
 const TabContent = ({ activeTabId, mainTabProps }: TabContentProps): React.JSX.Element | null => {
-  const tabComponents: Record<string, React.JSX.Element> = {
-    main: (
-      <MainTab
-        onPanToBase={mainTabProps.onPanToBase}
-        onTakeoff={mainTabProps.onTakeoff}
-        onLand={mainTabProps.onLand}
-        onReturnToBase={mainTabProps.onReturnToBase}
-        onLocateDrone={mainTabProps.onLocateDrone}
-        onShowConfirmDialog={mainTabProps.onShowConfirmDialog}
-        pathVisibility={mainTabProps.pathVisibility}
-        onTogglePath={mainTabProps.onTogglePath}
-        onToggleAllPaths={mainTabProps.onToggleAllPaths}
-      />
-    ),
-    server: <ServerSettingsTab />,
-    api: <ApiSettingsTab />,
-    help: <HelpTab />
-  }
-
-  return tabComponents[activeTabId] || null
+  return (
+    <>
+      {activeTabId === 'main' && (
+        <MainTab
+          onPanToBase={mainTabProps.onPanToBase}
+          onTakeoff={mainTabProps.onTakeoff}
+          onLand={mainTabProps.onLand}
+          onReturnToBase={mainTabProps.onReturnToBase}
+          onLocateDrone={mainTabProps.onLocateDrone}
+          onShowConfirmDialog={mainTabProps.onShowConfirmDialog}
+          pathVisibility={mainTabProps.pathVisibility}
+          onTogglePath={mainTabProps.onTogglePath}
+          onToggleAllPaths={mainTabProps.onToggleAllPaths}
+        />
+      )}
+      {activeTabId === 'server' && <ServerSettingsTab />}
+      {activeTabId === 'api' && <ApiSettingsTab />}
+      {activeTabId === 'help' && <HelpTab />}
+    </>
+  )
 }
 
 export default TabContent

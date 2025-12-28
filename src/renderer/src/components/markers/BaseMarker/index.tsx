@@ -13,7 +13,7 @@ interface BaseMarkerProps {
 }
 
 const BaseMarker = ({ position, isSelected, onClick }: BaseMarkerProps): React.JSX.Element => {
-  const handleClick = (e: React.MouseEvent): void => {
+  const handleSelectBase = (e: React.MouseEvent): void => {
     e.stopPropagation()
     onClick?.()
   }
@@ -24,7 +24,7 @@ const BaseMarker = ({ position, isSelected, onClick }: BaseMarkerProps): React.J
         {isSelected && <span className={styles.pulse} />}
         <div
           className={`${styles.marker} ${isSelected ? styles.selected : ''}`}
-          onClick={handleClick}
+          onClick={handleSelectBase}
         >
           <Home size={24} strokeWidth={2.5} />
         </div>

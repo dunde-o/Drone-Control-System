@@ -12,7 +12,7 @@ export interface ClusteringResult {
 }
 
 // 위경도를 픽셀 좌표로 변환 (Mercator projection)
-function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: number } {
+const latLngToPixel = (lat: number, lng: number, zoom: number): { x: number; y: number } => {
   const scale = Math.pow(2, zoom) * 256
   const x = ((lng + 180) / 360) * scale
   const latRad = (lat * Math.PI) / 180
@@ -21,17 +21,17 @@ function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: 
 }
 
 // 두 픽셀 좌표 간 거리 계산
-function pixelDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {
+const pixelDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }): number => {
   const dx = p1.x - p2.x
   const dy = p1.y - p2.y
   return Math.sqrt(dx * dx + dy * dy)
 }
 
 // 뷰포트 내 드론 필터링
-export function filterDronesInViewport(
+export const filterDronesInViewport = (
   drones: Drone[],
   bounds: google.maps.LatLngBounds | null | undefined
-): Drone[] {
+): Drone[] => {
   if (!bounds) return drones
 
   return drones.filter((drone) =>
@@ -41,7 +41,7 @@ export function filterDronesInViewport(
 
 // 줌 레벨에 따른 클러스터 반경 계산
 // 줌이 낮을수록(축소) 반경을 넓게, 높을수록(확대) 반경을 좁게
-function getClusterRadiusByZoom(zoom: number, baseRadius: number): number {
+const getClusterRadiusByZoom = (zoom: number, baseRadius: number): number => {
   // 줌 15를 기준으로 설정
   // 줌 10: baseRadius * 2.0 (넓게)
   // 줌 15: baseRadius * 1.0 (기준)
@@ -51,11 +51,11 @@ function getClusterRadiusByZoom(zoom: number, baseRadius: number): number {
 }
 
 // 드론 클러스터링
-export function clusterDrones(
+export const clusterDrones = (
   drones: Drone[],
   zoom: number,
   baseClusterRadius: number = 60 // 기본 클러스터 반경 (픽셀)
-): ClusteringResult {
+): ClusteringResult => {
   if (drones.length === 0) {
     return { clusters: [], singles: [] }
   }
@@ -116,12 +116,12 @@ export function clusterDrones(
 }
 
 // 클러스터링 + 뷰포트 필터링 통합
-export function getVisibleClustersAndDrones(
+export const getVisibleClustersAndDrones = (
   drones: Drone[],
   bounds: google.maps.LatLngBounds | null | undefined,
   zoom: number,
   baseClusterRadius: number = 60
-): ClusteringResult {
+): ClusteringResult => {
   // 뷰포트 내 드론만 필터링
   const visibleDrones = filterDronesInViewport(drones, bounds)
 

@@ -1,5 +1,7 @@
 import { ReactNode } from 'react'
 
+import TabButton from './TabButton'
+
 import styles from './styles.module.scss'
 
 interface Tab {
@@ -11,7 +13,7 @@ interface DrawerProps {
   isOpen: boolean
   tabs: Tab[]
   activeTabId: string
-  onTabClick: (tabId: string) => () => void
+  onTabClick: (tabId: string) => void
   children: ReactNode
 }
 
@@ -26,13 +28,13 @@ const Drawer = ({
     <div className={`${styles.drawer} ${isOpen ? styles.open : styles.closed}`}>
       <div className={styles.tabContainer}>
         {tabs.map((tab) => (
-          <button
+          <TabButton
             key={tab.id}
-            onClick={onTabClick(tab.id)}
-            className={`${styles.tabButton} ${activeTabId === tab.id ? styles.active : styles.inactive}`}
-          >
-            <span className={styles.tabLabel}>{tab.label}</span>
-          </button>
+            id={tab.id}
+            label={tab.label}
+            isActive={activeTabId === tab.id}
+            onClick={onTabClick}
+          />
         ))}
       </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-import { APIProvider, Map, MapMouseEvent, useMap } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, MapMouseEvent } from '@vis.gl/react-google-maps'
 
 import { useApiKey, useBaseMovement, useBasePosition } from '@renderer/hooks/queries'
 import { useWebSocket } from '@renderer/contexts/WebSocketContext'
@@ -15,102 +15,8 @@ import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
 import { Cluster } from '@renderer/utils/mapClustering'
 
+import MapController from './MapController'
 import { DEFAULT_MAP_CENTER } from './constants'
-
-interface MapControllerProps {
-  onPanToBase: (panTo: (position: { lat: number; lng: number }) => void) => void
-  onDroneMove: (droneId: string, lat: number, lng: number, append: boolean) => void
-  onMapStateChange: (zoom: number, bounds: google.maps.LatLngBounds | null) => void
-}
-
-const MapController = ({
-  onPanToBase,
-  onDroneMove,
-  onMapStateChange
-}: MapControllerProps): null => {
-  const map = useMap()
-
-  useEffect(() => {
-    if (!map) return
-
-    onPanToBase((position) => {
-      map.panTo(position)
-      map.setZoom(15)
-    })
-  }, [map, onPanToBase])
-
-  // 줌/바운드 변경 감지
-  useEffect(() => {
-    if (!map) return
-
-    const updateMapState = (): void => {
-      const zoom = map.getZoom() ?? 12
-      const bounds = map.getBounds() ?? null
-      onMapStateChange(zoom, bounds)
-    }
-
-    // 초기 상태
-    updateMapState()
-
-    // 이벤트 리스너
-    const zoomListener = map.addListener('zoom_changed', updateMapState)
-    const boundsListener = map.addListener('bounds_changed', updateMapState)
-
-    return () => {
-      google.maps.event.removeListener(zoomListener)
-      google.maps.event.removeListener(boundsListener)
-    }
-  }, [map, onMapStateChange])
-
-  // 드론 이동 요청 이벤트 처리
-  useEffect(() => {
-    if (!map) return
-
-    const handleDroneMoveRequest = (e: CustomEvent): void => {
-      const { clientX, clientY, droneId, append } = e.detail
-
-      // 맵 컨테이너의 위치 가져오기
-      const mapDiv = map.getDiv()
-      const rect = mapDiv.getBoundingClientRect()
-
-      // 화면 좌표를 맵 컨테이너 내 상대 좌표로 변환
-      const x = clientX - rect.left
-      const y = clientY - rect.top
-
-      // 맵 projection을 사용해 화면 좌표를 위경도로 변환
-      const projection = map.getProjection()
-      if (!projection) return
-
-      const bounds = map.getBounds()
-      if (!bounds) return
-
-      const ne = bounds.getNorthEast()
-      const sw = bounds.getSouthWest()
-      const topRight = projection.fromLatLngToPoint(ne)
-      const bottomLeft = projection.fromLatLngToPoint(sw)
-
-      if (!topRight || !bottomLeft) return
-
-      const scale = Math.pow(2, map.getZoom() || 0)
-      const worldPoint = new google.maps.Point(
-        bottomLeft.x + (((x / scale) * (topRight.x - bottomLeft.x)) / rect.width) * scale,
-        topRight.y + (((y / scale) * (bottomLeft.y - topRight.y)) / rect.height) * scale
-      )
-
-      const latLng = projection.fromPointToLatLng(worldPoint)
-      if (!latLng) return
-
-      onDroneMove(droneId, latLng.lat(), latLng.lng(), append)
-    }
-
-    window.addEventListener('drone-move-request', handleDroneMoveRequest as EventListener)
-    return () => {
-      window.removeEventListener('drone-move-request', handleDroneMoveRequest as EventListener)
-    }
-  }, [map, onDroneMove])
-
-  return null
-}
 
 const App = (): React.JSX.Element => {
   // UI state
@@ -129,7 +35,6 @@ const App = (): React.JSX.Element => {
     type: 'takeoff' | 'land' | 'allTakeoff' | 'allReturnToBase' | 'allRandomMove' | null
     droneId: string | null
     droneName: string | null
-    onBulkConfirm?: () => void
   }>({ isOpen: false, type: null, droneId: null, droneName: null })
 
   // Path visibility state (드론별 경로 표시 여부)
@@ -151,7 +56,6 @@ const App = (): React.JSX.Element => {
   const { apiKey } = useApiKey()
   const { data: basePosition } = useBasePosition()
   const { data: baseMovement } = useBaseMovement()
-
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -175,16 +79,17 @@ const App = (): React.JSX.Element => {
     }
   }, [selectedDrone])
 
-  const handleToggleDrawerByTab = (tabId: string): (() => void) => {
-    return (): void => {
+  const handleToggleDrawerByTab = useCallback(
+    (tabId: string): void => {
       if (activeTab === tabId && drawerOpen) {
         setDrawerOpen(false)
       } else {
         setActiveTab(tabId)
         setDrawerOpen(true)
       }
-    }
-  }
+    },
+    [activeTab, drawerOpen]
+  )
 
   const handleTogglePickBase = (): void => {
     if (isPickingBase) {
@@ -306,16 +211,24 @@ const App = (): React.JSX.Element => {
 
   // 확인 팝업에서 확인 클릭
   const handleConfirmAction = useCallback((): void => {
-    // Bulk 액션 처리
-    if (confirmDialog.onBulkConfirm) {
-      confirmDialog.onBulkConfirm()
-    } else if (confirmDialog.droneId && confirmDialog.type) {
+    const { type, droneId } = confirmDialog
+
+    if (type === 'takeoff' || type === 'land') {
       // 개별 드론 액션 처리
-      sendMessage({
-        type: confirmDialog.type === 'takeoff' ? 'drone:takeoff' : 'drone:land',
-        payload: { droneId: confirmDialog.droneId }
-      })
+      if (droneId) {
+        sendMessage({
+          type: type === 'takeoff' ? 'drone:takeoff' : 'drone:land',
+          payload: { droneId }
+        })
+      }
+    } else if (type === 'allTakeoff') {
+      sendMessage({ type: 'drone:allTakeoff' })
+    } else if (type === 'allReturnToBase') {
+      sendMessage({ type: 'drone:allReturnToBase' })
+    } else if (type === 'allRandomMove') {
+      sendMessage({ type: 'drone:allRandomMove' })
     }
+
     setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
   }, [confirmDialog, sendMessage])
 
@@ -331,21 +244,10 @@ const App = (): React.JSX.Element => {
         isOpen: true,
         type,
         droneId: null,
-        droneName: null,
-        onBulkConfirm: () => {
-          // 서버에 전체 명령 전송
-          sendMessage({
-            type:
-              type === 'allTakeoff'
-                ? 'drone:allTakeoff'
-                : type === 'allReturnToBase'
-                  ? 'drone:allReturnToBase'
-                  : 'drone:allRandomMove'
-          })
-        }
+        droneName: null
       })
     },
-    [sendMessage]
+    []
   )
 
   // 개별 드론 경로 표시 토글

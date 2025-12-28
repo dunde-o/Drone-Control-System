@@ -1,4 +1,4 @@
-import { ChangeEvent, memo, useCallback, useEffect, useState } from 'react'
+import { ChangeEvent, useEffect, useState } from 'react'
 
 import { Loader2 } from 'lucide-react'
 
@@ -6,7 +6,6 @@ import {
   useServerControl,
   useUpdateBaseAltitude,
   useUpdateBaseMoveDuration,
-  useUpdateDroneCount,
   useUpdateDroneFlySpeed,
   useUpdateDroneUpdateInterval,
   useUpdateDroneVerticalSpeed,
@@ -14,73 +13,29 @@ import {
 } from '@renderer/hooks/mutations'
 import {
   useConnectionStatus,
-  useDroneCount,
   useDroneLog,
   useHeartbeatLog,
   useServerConfig,
   useServerRunning
 } from '@renderer/hooks/queries'
+import { ConnectionStatus } from '@renderer/contexts/WebSocketContext/types'
 import { DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT } from '@renderer/components/App/constants'
+
+import DroneCountInput from './DroneCountInput'
 
 import styles from './styles.module.scss'
 
-// 드론 수 입력 컴포넌트 (useDrones 구독을 격리)
-interface DroneCountInputProps {
-  isConnected: boolean
+const CONNECTION_STATUS_TEXT: Record<ConnectionStatus, string> = {
+  connecting: 'Connecting...',
+  connected: 'Connected',
+  disconnected: 'Disconnected'
 }
 
-const DroneCountInput = memo(({ isConnected }: DroneCountInputProps): React.JSX.Element => {
-  const droneCount = useDroneCount()
-  const updateDroneCount = useUpdateDroneCount()
-  const [droneCountInput, setDroneCountInput] = useState('')
-
-  const isDroneCountUpdating = updateDroneCount.isPending
-  const isDroneCountUnchanged = droneCountInput === String(droneCount)
-
-  // Sync drone count input when drones change
-  useEffect(() => {
-    setDroneCountInput(String(droneCount))
-  }, [droneCount])
-
-  const handleDroneCountChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
-    setDroneCountInput(e.target.value)
-  }, [])
-
-  const handleApplyDroneCount = useCallback((): void => {
-    const count = parseInt(droneCountInput, 10)
-    if (isNaN(count) || count < 0) return
-    updateDroneCount.mutate(count)
-  }, [droneCountInput, updateDroneCount])
-
-  return (
-    <div className={styles.durationRow}>
-      <label className={styles.statusLabel}>드론 수:</label>
-      <div className={styles.durationInputGroup}>
-        <input
-          type="number"
-          value={droneCountInput}
-          onChange={handleDroneCountChange}
-          className={styles.durationInput}
-          min="0"
-          step="1"
-          disabled={!isConnected || isDroneCountUpdating}
-          placeholder="-"
-        />
-        <button
-          onClick={handleApplyDroneCount}
-          className={styles.applyButton}
-          disabled={
-            !isConnected || !droneCountInput || isDroneCountUpdating || isDroneCountUnchanged
-          }
-        >
-          {isDroneCountUpdating ? <Loader2 size={14} className={styles.spinner} /> : '적용'}
-        </button>
-      </div>
-    </div>
-  )
-})
-
-DroneCountInput.displayName = 'DroneCountInput'
+const CONNECTION_STATUS_CLASS: Record<ConnectionStatus, string> = {
+  connecting: styles.connecting,
+  connected: styles.connected,
+  disconnected: styles.disconnected
+}
 
 const ServerSettingsTab = (): React.JSX.Element => {
   const { data: connectionStatus = 'disconnected' } = useConnectionStatus()
@@ -197,27 +152,8 @@ const ServerSettingsTab = (): React.JSX.Element => {
     updateBaseAltitude.mutate(altitude)
   }
 
-  const getConnectionStatusText = (): string => {
-    switch (connectionStatus) {
-      case 'connecting':
-        return 'Connecting...'
-      case 'connected':
-        return 'Connected'
-      default:
-        return 'Disconnected'
-    }
-  }
-
-  const getConnectionStatusClass = (): string => {
-    switch (connectionStatus) {
-      case 'connected':
-        return styles.connected
-      case 'connecting':
-        return styles.connecting
-      default:
-        return styles.disconnected
-    }
-  }
+  const connectionStatusText = CONNECTION_STATUS_TEXT[connectionStatus]
+  const connectionStatusClass = CONNECTION_STATUS_CLASS[connectionStatus]
 
   const isBaseMoveDurationUpdating = updateBaseMoveDuration.isPending
   const isHeartbeatIntervalUpdating = updateHeartbeatInterval.isPending
@@ -283,8 +219,8 @@ const ServerSettingsTab = (): React.JSX.Element => {
         <h3>Server Status</h3>
         <div className={styles.statusRow}>
           <span className={styles.statusLabel}>Status:</span>
-          <span className={`${styles.statusValue} ${getConnectionStatusClass()}`}>
-            {getConnectionStatusText()}
+          <span className={`${styles.statusValue} ${connectionStatusClass}`}>
+            {connectionStatusText}
           </span>
         </div>
         <div className={styles.statusRow}>

@@ -1,6 +1,7 @@
 import { ChangeEvent, useState, useEffect } from 'react'
 
 import { useApiKey } from '@renderer/hooks/queries'
+import { API_KEY_STORAGE_KEY, GOOGLE_CLOUD_CONSOLE_URL } from '@renderer/components/App/constants'
 
 import styles from './styles.module.scss'
 
@@ -18,17 +19,16 @@ const ApiSettingsTab = (): React.JSX.Element => {
   }
 
   const handleApplyApiKey = (): void => {
-    // localStorage에 직접 저장 후 reload
-    localStorage.setItem('google-maps-api-key', apiKeyInput)
-    console.log('[ApiSettingsTab] Saved API Key:', apiKeyInput)
-    console.log('[ApiSettingsTab] Verify:', localStorage.getItem('google-maps-api-key'))
+    localStorage.setItem(API_KEY_STORAGE_KEY, apiKeyInput)
+    console.info('[ApiSettingsTab] Saved API Key:', apiKeyInput)
+    console.info('[ApiSettingsTab] Verify:', localStorage.getItem(API_KEY_STORAGE_KEY))
     setTimeout(() => {
       window.location.reload()
     }, 100)
   }
 
   const handleOpenCloudConsole = (): void => {
-    window.open('https://console.cloud.google.com/google/maps-apis', '_blank')
+    window.open(GOOGLE_CLOUD_CONSOLE_URL, '_blank')
   }
 
   const isUnchanged = apiKeyInput === apiKey

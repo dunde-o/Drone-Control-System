@@ -2,13 +2,16 @@
 export const DEFAULT_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
 // localStorage 키
-const STORAGE_KEY = 'google-maps-api-key'
+export const API_KEY_STORAGE_KEY = 'google-maps-api-key'
+
+// Google Cloud Console URL
+export const GOOGLE_CLOUD_CONSOLE_URL = 'https://console.cloud.google.com/google/maps-apis'
 
 // 모듈 로드 시점에 localStorage에서 API 키를 읽어옴 (React 렌더링 전)
 // 이렇게 하면 첫 렌더링에서도 올바른 키를 사용할 수 있음
 const getInitialApiKey = (): string => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(API_KEY_STORAGE_KEY)
     if (stored && stored.trim() !== '') {
       return stored
     }

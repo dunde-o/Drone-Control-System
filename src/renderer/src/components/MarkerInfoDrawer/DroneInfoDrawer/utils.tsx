@@ -1,35 +1,11 @@
-import { BatteryFull, BatteryLow, BatteryMedium, BatteryWarning } from 'lucide-react'
+// 배터리 관련 함수는 공통 유틸에서 re-export
+export { getBatteryIcon } from '@renderer/utils/BatteryIcon'
+export { getBatteryColorClass } from '@renderer/utils/battery'
 
-import { DroneStatus } from '@renderer/contexts/WebSocketContext/types'
-
-import {
-  BATTERY_LEVEL,
-  STATUS_CONFIG,
-  GROUND_STATUSES,
-  AIR_STATUSES,
-  TRANSITIONING_STATUSES
-} from '../constants'
-
-export const getBatteryIcon = (battery: number): React.JSX.Element => {
-  if (battery < BATTERY_LEVEL.CRITICAL) return <BatteryWarning size={14} />
-  if (battery < BATTERY_LEVEL.LOW) return <BatteryLow size={14} />
-  if (battery < BATTERY_LEVEL.MEDIUM) return <BatteryMedium size={14} />
-  return <BatteryFull size={14} />
-}
-
-export const getBatteryColorClass = (battery: number): string => {
-  if (battery < BATTERY_LEVEL.LOW) return 'batteryDanger'
-  if (battery < BATTERY_LEVEL.MEDIUM) return 'batteryWarning'
-  return 'batteryGood'
-}
-
-export const isGroundStatus = (status: DroneStatus): boolean => GROUND_STATUSES.includes(status)
-
-export const isAirStatus = (status: DroneStatus): boolean => AIR_STATUSES.includes(status)
-
-export const isTransitioning = (status: DroneStatus): boolean =>
-  TRANSITIONING_STATUSES.includes(status)
-
-export const getStatusConfig = (status: DroneStatus): { label: string; className: string } => {
-  return STATUS_CONFIG[status] || { label: status, className: 'statusIdle' }
-}
+// 드론 상태 관련 함수는 공통 상수에서 re-export
+export {
+  isGroundStatus,
+  isAirStatus,
+  isTransitioning,
+  getStatusConfig
+} from '@renderer/contexts/WebSocketContext/constants'

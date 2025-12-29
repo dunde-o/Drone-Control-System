@@ -2,18 +2,25 @@ import { useEffect } from 'react'
 
 import { useMap } from '@vis.gl/react-google-maps'
 
+import { BaseMovement } from '@renderer/contexts/WebSocketContext/types'
+import { useMovementPath } from '@renderer/hooks/useMovementPath'
+
 interface MapControllerProps {
   onPanToBase: (panTo: (position: { lat: number; lng: number }) => void) => void
   onDroneMove: (droneId: string, lat: number, lng: number, append: boolean) => void
   onMapStateChange: (zoom: number, bounds: google.maps.LatLngBounds | null) => void
+  baseMovement: BaseMovement | null
 }
 
 const MapController = ({
   onPanToBase,
   onDroneMove,
-  onMapStateChange
+  onMapStateChange,
+  baseMovement
 }: MapControllerProps): null => {
   const map = useMap()
+
+  useMovementPath(baseMovement)
 
   useEffect(() => {
     if (!map) return

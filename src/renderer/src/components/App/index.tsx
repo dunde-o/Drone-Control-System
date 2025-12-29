@@ -5,7 +5,6 @@ import ConfirmDialog from '@renderer/components/ConfirmDialog'
 import Drawer from '@renderer/components/Drawer'
 import DroneMarkersLayer from '@renderer/components/DroneMarkersLayer'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
-import MovementPath from '@renderer/components/MovementPath'
 import SelectedMarkerInfo from '@renderer/components/SelectedMarkerInfo'
 import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
@@ -100,11 +99,11 @@ const App = (): React.JSX.Element => {
           onClusterClick={handleClusterClick}
           onSelectedDroneChange={setSelectedDrone}
         />
-        {baseMovement && <MovementPath movement={baseMovement} />}
         <MapController
           onPanToBase={handleSetPanTo}
           onDroneMove={handleDroneMove}
           onMapStateChange={handleMapStateChange}
+          baseMovement={baseMovement ?? null}
         />
       </Map>
 

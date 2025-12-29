@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const buildDir = join(__dirname, '..', 'build')
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 async function generateIcons() {
   const svgPath = join(buildDir, 'icon.svg')
   const pngPath = join(buildDir, 'icon.png')

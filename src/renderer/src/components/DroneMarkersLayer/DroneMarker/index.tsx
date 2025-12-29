@@ -75,7 +75,8 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
       }
       contentRef.current = null
     }
-  }, [map]) // map만 의존 - 마커 생성/제거만 담당
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마커 생성/제거만 담당, 다른 값들은 별도 useEffect에서 처리
+  }, [map])
 
   // 위치 업데이트 (React 렌더링 없이 직접 업데이트)
   useEffect(() => {
@@ -90,6 +91,7 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
       markerRef.current.position = { lat: drone.position.lat, lng: drone.position.lng }
       prevPositionRef.current = { ...drone.position }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- lat, lng만 추적하여 불필요한 객체 참조 비교 방지
   }, [drone.position.lat, drone.position.lng])
 
   // 상태/선택 변경 시 컨텐츠 업데이트
@@ -106,6 +108,7 @@ const DroneMarker = ({ drone, isSelected = false, onClick }: DroneMarkerProps): 
       prevStatusRef.current = drone.status
       prevIsSelectedRef.current = isSelected
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelectDrone은 drone.id, onClick에서 파생되므로 중복 추가 불필요
   }, [drone.status, isSelected, drone.id, onClick])
 
   return null

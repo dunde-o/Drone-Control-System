@@ -70,7 +70,8 @@ const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
       }
       contentRef.current = null
     }
-  }, [map]) // map만 의존
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마커 생성/제거만 담당, 다른 값들은 별도 useEffect에서 처리
+  }, [map])
 
   // 위치 업데이트
   useEffect(() => {
@@ -85,6 +86,7 @@ const ClusterMarker = ({ cluster, onClick }: ClusterMarkerProps): null => {
       markerRef.current.position = { lat: cluster.center.lat, lng: cluster.center.lng }
       prevPositionRef.current = { ...cluster.center }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- lat, lng만 추적하여 불필요한 객체 참조 비교 방지
   }, [cluster.center.lat, cluster.center.lng])
 
   // 카운트 변경 시 컨텐츠 업데이트

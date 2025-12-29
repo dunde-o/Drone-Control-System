@@ -8,20 +8,23 @@
   position: absolute;
   top: 12px;
   bottom: 12px;
+  right: 12px;
   width: 300px;
   background-color: rgba(255, 255, 255, 0.95);
-  transition: right 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
   z-index: 99;
   display: flex;
   border-radius: 12px;
 
   &.open {
-    right: 12px;
+    transform: translateX(0);
     box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
   }
 
   &.closed {
-    right: -300px;
+    transform: translateX(calc(100% + 12px));
     box-shadow: none;
   }
 }

@@ -1,362 +1,73 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-
-import { APIProvider, Map, MapMouseEvent } from '@vis.gl/react-google-maps'
+import { APIProvider, Map } from '@vis.gl/react-google-maps'
 
 import { useApiKey, useBaseMovement, useBasePosition } from '@renderer/hooks/queries'
-import { useWebSocket } from '@renderer/contexts/WebSocketContext'
-import { Drone } from '@renderer/contexts/WebSocketContext/types'
 import ConfirmDialog from '@renderer/components/ConfirmDialog'
 import Drawer from '@renderer/components/Drawer'
 import DroneMarkersLayer from '@renderer/components/DroneMarkersLayer'
 import BaseMarker from '@renderer/components/markers/BaseMarker'
-import MovementPath from '@renderer/components/MovementPath'
 import SelectedMarkerInfo from '@renderer/components/SelectedMarkerInfo'
 import TabContent from '@renderer/components/tabs'
 import { TABS } from '@renderer/components/tabs/constants'
-import { Cluster } from '@renderer/utils/mapClustering'
 
 import MapController from './MapController'
 import { DEFAULT_MAP_CENTER } from './constants'
+import {
+  CONFIRM_DIALOG_TITLE,
+  CONFIRM_DIALOG_CONFIRM_TEXT,
+  getConfirmDialogMessage
+} from './confirmDialog'
+import { useConfirmDialog } from './useConfirmDialog'
+import { useDrawer } from './useDrawer'
+import { useMapPicking } from './useMapPicking'
+import { useMapInteraction } from './useMapInteraction'
 
 const App = (): React.JSX.Element => {
-  // UI state
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('main')
-  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null)
-
-  // Map picking state
-  const [isPickingBase, setIsPickingBase] = useState(false)
-  const [pickingLat, setPickingLat] = useState('')
-  const [pickingLng, setPickingLng] = useState('')
-
-  // Confirm dialog state
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean
-    type: 'takeoff' | 'land' | 'allTakeoff' | 'allReturnToBase' | 'allRandomMove' | null
-    droneId: string | null
-    droneName: string | null
-  }>({ isOpen: false, type: null, droneId: null, droneName: null })
-
-  // Path visibility state (드론별 경로 표시 여부)
-  const [pathVisibility, setPathVisibility] = useState<Record<string, boolean>>({})
-
-  // Map state for clustering
-  const [mapZoom, setMapZoom] = useState(12)
-  const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null)
-
-  // Refs for closures
-  const activeTabRef = useRef(activeTab)
-  const drawerOpenRef = useRef(drawerOpen)
-  const panToRef = useRef<((position: { lat: number; lng: number }) => void) | null>(null)
-
-  // Selected drone for context menu (set by DroneMarkersLayer)
-  const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null)
-
-  // React Query hooks
   const { apiKey } = useApiKey()
   const { data: basePosition } = useBasePosition()
   const { data: baseMovement } = useBaseMovement()
 
-  useEffect(() => {
-    activeTabRef.current = activeTab
-    drawerOpenRef.current = drawerOpen
-  }, [activeTab, drawerOpen])
+  const { drawerOpen, activeTab, handleToggleDrawerByTab } = useDrawer()
 
-  useEffect(() => {
-    if (isPickingBase) {
-      document.body.classList.add('picking-base')
-    } else {
-      document.body.classList.remove('picking-base')
-    }
-  }, [isPickingBase])
+  const {
+    isPickingBase,
+    pickingLat,
+    pickingLng,
+    handleTogglePickBase,
+    handleMapClick,
+    handleMapMouseMove,
+    setSelectedMarkerId,
+    selectedMarkerId
+  } = useMapPicking()
 
-  // 드론 선택 시 맵 커서 변경
-  useEffect(() => {
-    if (selectedDrone) {
-      document.body.classList.add('drone-selected')
-    } else {
-      document.body.classList.remove('drone-selected')
-    }
-  }, [selectedDrone])
+  const {
+    confirmDialog,
+    handleShowDroneConfirmDialog,
+    handleShowBulkConfirmDialog,
+    handleTakeoffRequest,
+    handleLandRequest,
+    handleReturnToBase,
+    handleConfirmAction,
+    handleCancelConfirm
+  } = useConfirmDialog()
 
-  const handleToggleDrawerByTab = useCallback(
-    (tabId: string): void => {
-      if (activeTab === tabId && drawerOpen) {
-        setDrawerOpen(false)
-      } else {
-        setActiveTab(tabId)
-        setDrawerOpen(true)
-      }
-    },
-    [activeTab, drawerOpen]
-  )
-
-  const handleTogglePickBase = (): void => {
-    if (isPickingBase) {
-      // Cancel: reset picking coords
-      setPickingLat('')
-      setPickingLng('')
-      setIsPickingBase(false)
-    } else {
-      // Start picking
-      setIsPickingBase(true)
-    }
-  }
-
-  const handleMapClick = useCallback(
-    (e: MapMouseEvent): void => {
-      if (isPickingBase && e.detail.latLng) {
-        const lat = e.detail.latLng.lat
-        const lng = e.detail.latLng.lng
-        setPickingLat(String(lat))
-        setPickingLng(String(lng))
-        setIsPickingBase(false)
-      } else {
-        setSelectedMarkerId(null)
-      }
-    },
-    [isPickingBase]
-  )
-
-  const handleBaseMarkerClick = useCallback((): void => {
-    setSelectedMarkerId('base')
-  }, [])
-
-  const handleDroneMarkerClick = useCallback((droneId: string): void => {
-    setSelectedMarkerId(droneId)
-  }, [])
-
-  const handleCloseMarkerInfo = useCallback((): void => {
-    setSelectedMarkerId(null)
-  }, [])
-
-  const handleSetPanTo = useCallback(
-    (panTo: (position: { lat: number; lng: number }) => void): void => {
-      panToRef.current = panTo
-    },
-    []
-  )
-
-  const handlePanToBase = useCallback((): void => {
-    if (basePosition && panToRef.current) {
-      panToRef.current(basePosition)
-      setSelectedMarkerId('base')
-    }
-  }, [basePosition])
-
-  // 드론 위치로 이동하고 드론 선택
-  const handleLocateDrone = useCallback((droneId: string): void => {
-    const helpers = (window as unknown as Record<string, unknown>).__droneHelpers as
-      | { locateDrone: (id: string) => void }
-      | undefined
-    if (helpers?.locateDrone) {
-      helpers.locateDrone(droneId)
-    }
-    setSelectedMarkerId(droneId)
-  }, [])
-
-  const handleMapMouseMove = useCallback(
-    (e: MapMouseEvent): void => {
-      if (isPickingBase && e.detail.latLng) {
-        const lat = e.detail.latLng.lat
-        const lng = e.detail.latLng.lng
-        setPickingLat(String(lat))
-        setPickingLng(String(lng))
-      }
-    },
-    [isPickingBase]
-  )
-
-  const { sendMessage } = useWebSocket()
-
-  // 드론 이륙/착륙 확인 다이얼로그 표시 (SelectedMarkerInfo, MainTab에서 호출)
-  const handleShowDroneConfirmDialog = useCallback(
-    (type: 'takeoff' | 'land', droneId: string, droneName: string): void => {
-      setConfirmDialog({
-        isOpen: true,
-        type,
-        droneId,
-        droneName
-      })
-    },
-    []
-  )
-
-  // 드론 이륙 요청 (MainTab에서 호출)
-  const handleTakeoffRequest = useCallback(
-    (droneId: string, droneName: string): void => {
-      handleShowDroneConfirmDialog('takeoff', droneId, droneName)
-    },
-    [handleShowDroneConfirmDialog]
-  )
-
-  // 드론 착륙 요청 (MainTab에서 호출)
-  const handleLandRequest = useCallback(
-    (droneId: string, droneName: string): void => {
-      handleShowDroneConfirmDialog('land', droneId, droneName)
-    },
-    [handleShowDroneConfirmDialog]
-  )
-
-  // 리턴투베이스 (확인 없이 바로 실행)
-  const handleReturnToBase = useCallback(
-    (droneId: string): void => {
-      sendMessage({
-        type: 'drone:returnToBase',
-        payload: { droneId }
-      })
-    },
-    [sendMessage]
-  )
-
-  // 확인 팝업에서 확인 클릭
-  const handleConfirmAction = useCallback((): void => {
-    const { type, droneId } = confirmDialog
-
-    if (type === 'takeoff' || type === 'land') {
-      // 개별 드론 액션 처리
-      if (droneId) {
-        sendMessage({
-          type: type === 'takeoff' ? 'drone:takeoff' : 'drone:land',
-          payload: { droneId }
-        })
-      }
-    } else if (type === 'allTakeoff') {
-      sendMessage({ type: 'drone:allTakeoff' })
-    } else if (type === 'allReturnToBase') {
-      sendMessage({ type: 'drone:allReturnToBase' })
-    } else if (type === 'allRandomMove') {
-      sendMessage({ type: 'drone:allRandomMove' })
-    }
-
-    setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
-  }, [confirmDialog, sendMessage])
-
-  // 확인 팝업에서 취소 클릭
-  const handleCancelConfirm = useCallback((): void => {
-    setConfirmDialog({ isOpen: false, type: null, droneId: null, droneName: null })
-  }, [])
-
-  // Bulk 액션 확인 다이얼로그 표시 (서버 전체 명령 호출)
-  const handleShowBulkConfirmDialog = useCallback(
-    (type: 'allTakeoff' | 'allReturnToBase' | 'allRandomMove'): void => {
-      setConfirmDialog({
-        isOpen: true,
-        type,
-        droneId: null,
-        droneName: null
-      })
-    },
-    []
-  )
-
-  // 개별 드론 경로 표시 토글
-  const handleTogglePath = useCallback((droneId: string): void => {
-    setPathVisibility((prev) => ({
-      ...prev,
-      [droneId]: !prev[droneId]
-    }))
-  }, [])
-
-  // 전체 드론 경로 표시 토글
-  const handleToggleAllPaths = useCallback((show: boolean): void => {
-    const helpers = (window as unknown as Record<string, unknown>).__droneHelpers as
-      | { getAllDroneIds: () => string[] }
-      | undefined
-    const droneIds = helpers?.getAllDroneIds?.() ?? []
-    const newVisibility: Record<string, boolean> = {}
-    droneIds.forEach((id) => {
-      newVisibility[id] = show
-    })
-    setPathVisibility(newVisibility)
-  }, [])
-
-  // 맵 상태 변경 핸들러
-  const handleMapStateChange = useCallback(
-    (zoom: number, bounds: google.maps.LatLngBounds | null): void => {
-      setMapZoom(zoom)
-      setMapBounds(bounds)
-    },
-    []
-  )
-
-  // 클러스터 클릭 시 확대
-  const handleClusterClick = useCallback((cluster: Cluster): void => {
-    if (panToRef.current) {
-      panToRef.current(cluster.center)
-    }
-  }, [])
-
-  // 맵 우클릭으로 드론 이동 명령
-  const handleMapContextMenu = useCallback(
-    (e: MouseEvent): void => {
-      if (!selectedDrone) return
-
-      // Google Maps 컨테이너인지 확인
-      const target = e.target as HTMLElement
-      if (!target.closest('.gm-style')) return
-
-      e.preventDefault()
-
-      // 맵 좌표 계산은 MapController에서 처리해야 하므로
-      // 커스텀 이벤트로 전달
-      const customEvent = new CustomEvent('drone-move-request', {
-        detail: {
-          clientX: e.clientX,
-          clientY: e.clientY,
-          droneId: selectedDrone.id,
-          append: e.shiftKey
-        }
-      })
-      window.dispatchEvent(customEvent)
-    },
-    [selectedDrone]
-  )
-
-  // 우클릭 이벤트 리스너 등록
-  useEffect(() => {
-    document.addEventListener('contextmenu', handleMapContextMenu)
-    return () => document.removeEventListener('contextmenu', handleMapContextMenu)
-  }, [handleMapContextMenu])
-
-  // 드론 이동 명령 처리
-  const handleDroneMove = useCallback(
-    (droneId: string, lat: number, lng: number, append: boolean): void => {
-      sendMessage({
-        type: 'drone:move',
-        payload: {
-          droneId,
-          waypoints: [{ lat, lng }],
-          append
-        }
-      })
-    },
-    [sendMessage]
-  )
-
-  useEffect(() => {
-    const handleToggleDrawerByKeyboard = (e: KeyboardEvent): void => {
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        setDrawerOpen((prev) => !prev)
-      }
-    }
-    window.addEventListener('keydown', handleToggleDrawerByKeyboard)
-
-    window.api.onSwitchTab((tabIndex: number) => {
-      if (tabIndex <= TABS.length) {
-        const targetTabId = TABS[tabIndex - 1].id
-        if (drawerOpenRef.current && activeTabRef.current === targetTabId) {
-          setDrawerOpen(false)
-        } else {
-          setActiveTab(targetTabId)
-          setDrawerOpen(true)
-        }
-      }
-    })
-
-    return () => window.removeEventListener('keydown', handleToggleDrawerByKeyboard)
-  }, [])
+  const {
+    mapZoom,
+    mapBounds,
+    pathVisibility,
+    panToRef,
+    setSelectedDrone,
+    handleBaseMarkerClick,
+    handleDroneMarkerClick,
+    handleCloseMarkerInfo,
+    handleSetPanTo,
+    handlePanToBase,
+    handleLocateDrone,
+    handleMapStateChange,
+    handleClusterClick,
+    handleTogglePath,
+    handleToggleAllPaths,
+    handleDroneMove
+  } = useMapInteraction({ basePosition, setSelectedMarkerId })
 
   return (
     <APIProvider key={apiKey} apiKey={apiKey}>
@@ -388,11 +99,11 @@ const App = (): React.JSX.Element => {
           onClusterClick={handleClusterClick}
           onSelectedDroneChange={setSelectedDrone}
         />
-        {baseMovement && <MovementPath movement={baseMovement} />}
         <MapController
           onPanToBase={handleSetPanTo}
           onDroneMove={handleDroneMove}
           onMapStateChange={handleMapStateChange}
+          baseMovement={baseMovement ?? null}
         />
       </Map>
 
@@ -406,50 +117,18 @@ const App = (): React.JSX.Element => {
         pickingLng={pickingLng}
       />
 
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        title={
-          confirmDialog.type === 'takeoff'
-            ? '이륙 확인'
-            : confirmDialog.type === 'land'
-              ? '착륙 확인'
-              : confirmDialog.type === 'allTakeoff'
-                ? '전체 이륙 확인'
-                : confirmDialog.type === 'allReturnToBase'
-                  ? '전체 복귀 확인'
-                  : confirmDialog.type === 'allRandomMove'
-                    ? '전체 랜덤 이동 확인'
-                    : '확인'
-        }
-        message={
-          confirmDialog.type === 'takeoff'
-            ? `${confirmDialog.droneName}을(를) 이륙시키시겠습니까?`
-            : confirmDialog.type === 'land'
-              ? `${confirmDialog.droneName}을(를) 현재 위치에 착륙시키시겠습니까?`
-              : confirmDialog.type === 'allTakeoff'
-                ? '대기 중인 모든 드론을 이륙시키시겠습니까?'
-                : confirmDialog.type === 'allReturnToBase'
-                  ? '비행 중인 모든 드론을 베이스로 복귀시키시겠습니까?'
-                  : confirmDialog.type === 'allRandomMove'
-                    ? '비행 중인 모든 드론을 베이스 기준 5~10km 반경 내 랜덤 위치로 이동시키시겠습니까?'
-                    : ''
-        }
-        confirmText={
-          confirmDialog.type === 'takeoff' || confirmDialog.type === 'allTakeoff'
-            ? '이륙'
-            : confirmDialog.type === 'land'
-              ? '착륙'
-              : confirmDialog.type === 'allReturnToBase'
-                ? '복귀'
-                : confirmDialog.type === 'allRandomMove'
-                  ? '이동'
-                  : '확인'
-        }
-        cancelText="취소"
-        variant={confirmDialog.type === 'land' ? 'danger' : 'primary'}
-        onConfirm={handleConfirmAction}
-        onCancel={handleCancelConfirm}
-      />
+      {confirmDialog.type && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={CONFIRM_DIALOG_TITLE[confirmDialog.type]}
+          message={getConfirmDialogMessage(confirmDialog.type, confirmDialog.droneName)}
+          confirmText={CONFIRM_DIALOG_CONFIRM_TEXT[confirmDialog.type]}
+          cancelText="취소"
+          variant={confirmDialog.type === 'land' ? 'danger' : 'primary'}
+          onConfirm={handleConfirmAction}
+          onCancel={handleCancelConfirm}
+        />
+      )}
 
       <Drawer
         isOpen={drawerOpen}

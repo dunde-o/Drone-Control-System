@@ -1,18 +1,16 @@
 import { memo } from 'react'
 
-import {
-  BatteryFull,
-  BatteryLow,
-  BatteryMedium,
-  BatteryWarning,
-  Crosshair,
-  Home,
-  PlaneLanding,
-  PlaneTakeoff,
-  Route
-} from 'lucide-react'
+import { Crosshair, Home, PlaneLanding, PlaneTakeoff, Route } from 'lucide-react'
 
 import { Drone } from '@renderer/contexts/WebSocketContext/types'
+import {
+  isGroundStatus,
+  isAirStatus,
+  isTransitioning,
+  getStatusConfig
+} from '@renderer/contexts/WebSocketContext/constants'
+import { getBatteryIcon } from '@renderer/utils/BatteryIcon'
+import { getBatteryColorClass } from '@renderer/utils/battery'
 
 import styles from '../styles.module.scss'
 
@@ -26,42 +24,6 @@ interface DroneCardProps {
   onTogglePath: (droneId: string) => void
 }
 
-// 지상 대기 상태 (이륙 버튼 표시)
-const isGroundStatus = (status: Drone['status']): boolean => status === 'idle'
-
-// 공중 상태 (착륙 버튼 표시)
-const isAirStatus = (status: Drone['status']): boolean =>
-  ['hovering', 'moving', 'returning', 'returning_auto'].includes(status)
-
-// 버튼 비활성화 상태 (이/착륙 중)
-const isTransitioning = (status: Drone['status']): boolean =>
-  ['ascending', 'landing', 'landing_auto', 'mia'].includes(status)
-
-const STATUS_CONFIG: Record<Drone['status'], { label: string; className: string }> = {
-  idle: { label: '대기', className: 'statusIdle' },
-  ascending: { label: '이륙 중', className: 'statusAscending' },
-  hovering: { label: '대기 비행', className: 'statusHovering' },
-  moving: { label: '이동 중', className: 'statusMoving' },
-  mia: { label: '통신 두절', className: 'statusMia' },
-  returning: { label: '복귀 중', className: 'statusReturning' },
-  landing: { label: '착륙 중', className: 'statusLanding' },
-  returning_auto: { label: '자동 복귀', className: 'statusAuto' },
-  landing_auto: { label: '자동 착륙', className: 'statusAuto' }
-}
-
-const getBatteryIcon = (battery: number): React.JSX.Element => {
-  if (battery < 20) return <BatteryWarning size={14} />
-  if (battery < 40) return <BatteryLow size={14} />
-  if (battery < 70) return <BatteryMedium size={14} />
-  return <BatteryFull size={14} />
-}
-
-const getBatteryColorClass = (battery: number): string => {
-  if (battery < 40) return 'batteryDanger'
-  if (battery < 70) return 'batteryWarning'
-  return 'batteryGood'
-}
-
 const DroneCardComponent = ({
   drone,
   showPath,
@@ -71,10 +33,7 @@ const DroneCardComponent = ({
   onLocate,
   onTogglePath
 }: DroneCardProps): React.JSX.Element => {
-  const statusConfig = STATUS_CONFIG[drone.status] || {
-    label: drone.status,
-    className: 'statusIdle'
-  }
+  const statusConfig = getStatusConfig(drone.status)
   const batteryColorClass = getBatteryColorClass(drone.battery)
 
   const canTakeoffOrLand = !isTransitioning(drone.status)

@@ -1,8 +1,6 @@
 import { useCallback } from 'react'
 
-import { INITIAL_API_KEY } from '@renderer/components/App/constants'
-
-const STORAGE_KEY = 'google-maps-api-key'
+import { INITIAL_API_KEY, API_KEY_STORAGE_KEY } from '@renderer/components/App/constants'
 
 interface UseApiKeyReturn {
   apiKey: string
@@ -18,7 +16,7 @@ interface UseApiKeyReturn {
  */
 export const useApiKey = (): UseApiKeyReturn => {
   const setApiKey = useCallback((newKey: string) => {
-    localStorage.setItem(STORAGE_KEY, newKey)
+    localStorage.setItem(API_KEY_STORAGE_KEY, newKey)
     // API 키 변경 후에는 페이지 새로고침이 필요함
     // (ApiSettingsTab에서 reload 처리)
   }, [])

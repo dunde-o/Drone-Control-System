@@ -1,6 +1,7 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
 
 import { Drone } from '@renderer/contexts/WebSocketContext/types'
+
 import { queryKeys } from './queryKeys'
 
 export const useDrones = (): UseQueryResult<Drone[]> => {
@@ -9,4 +10,15 @@ export const useDrones = (): UseQueryResult<Drone[]> => {
     queryFn: () => [],
     staleTime: Infinity
   })
+}
+
+export const useDroneCount = (): number => {
+  const { data: count = 0 } = useQuery<Drone[], Error, number>({
+    queryKey: queryKeys.drones.list(),
+    queryFn: () => [],
+    staleTime: Infinity,
+    select: (drones) => drones.length
+  })
+
+  return count
 }

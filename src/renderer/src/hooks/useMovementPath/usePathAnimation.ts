@@ -1,53 +1,28 @@
-import { useEffect, useRef, useMemo } from 'react'
-import { useMap } from '@vis.gl/react-google-maps'
+import { useEffect, useRef } from 'react'
 
 import { BaseMovement } from '@renderer/contexts/WebSocketContext/types'
 
-interface MovementPathProps {
-  movement: BaseMovement
+import { PathSymbols } from './symbols'
+
+interface UsePathAnimationProps {
+  map: google.maps.Map | null
+  movement: BaseMovement | null
+  symbols: PathSymbols | null
 }
 
-const MovementPath = ({ movement }: MovementPathProps): null => {
-  const map = useMap()
+export const usePathAnimation = ({ map, movement, symbols }: UsePathAnimationProps): void => {
   const polylineRef = useRef<google.maps.Polyline | null>(null)
   const glowPolylineRef = useRef<google.maps.Polyline | null>(null)
   const animationRef = useRef<number | null>(null)
 
-  // Define symbols inside component after Google Maps API is loaded
-  const symbols = useMemo(() => {
-    if (typeof google === 'undefined') return null
-
-    return {
-      dash: {
-        path: 'M 0,-1 0,1',
-        strokeOpacity: 1,
-        strokeWeight: 3,
-        scale: 4
-      } as google.maps.Symbol,
-      endCircle: {
-        path: google.maps.SymbolPath.CIRCLE,
-        strokeOpacity: 1,
-        fillOpacity: 1,
-        scale: 6
-      } as google.maps.Symbol,
-      glow: {
-        path: 'M -2,0 A 2,2 0 1,1 2,0 A 2,2 0 1,1 -2,0',
-        strokeOpacity: 0,
-        fillOpacity: 1,
-        scale: 3
-      } as google.maps.Symbol
-    }
-  }, [])
-
   useEffect(() => {
-    if (!map || !symbols) return
+    if (!map || !symbols || !movement) return
 
     const path = [
       { lat: movement.from.lat, lng: movement.from.lng },
       { lat: movement.to.lat, lng: movement.to.lng }
     ]
 
-    // Main dashed line with end circle
     polylineRef.current = new google.maps.Polyline({
       path,
       geodesic: true,
@@ -66,7 +41,6 @@ const MovementPath = ({ movement }: MovementPathProps): null => {
       map
     })
 
-    // Glow effect polyline (animated)
     glowPolylineRef.current = new google.maps.Polyline({
       path,
       geodesic: true,
@@ -80,15 +54,12 @@ const MovementPath = ({ movement }: MovementPathProps): null => {
       map
     })
 
-    // Animation
     const startTime = Date.now()
     const duration = movement.duration
 
     const animate = (): void => {
       const elapsed = Date.now() - startTime
       const progress = Math.min(elapsed / duration, 1)
-
-      // Move glow along the path
       const offset = progress * 100
 
       if (glowPolylineRef.current) {
@@ -96,7 +67,6 @@ const MovementPath = ({ movement }: MovementPathProps): null => {
         if (icons && icons[0]) {
           icons[0].offset = `${offset}%`
 
-          // Pulse effect - vary opacity and scale
           const pulse = Math.sin(elapsed * 0.01) * 0.3 + 0.7
           icons[0].icon = {
             ...symbols.glow,
@@ -109,7 +79,6 @@ const MovementPath = ({ movement }: MovementPathProps): null => {
         }
       }
 
-      // Update dash and end circle colors with flowing effect
       if (polylineRef.current) {
         const icons = polylineRef.current.get('icons')
         if (icons) {
@@ -153,8 +122,4 @@ const MovementPath = ({ movement }: MovementPathProps): null => {
       }
     }
   }, [map, movement, symbols])
-
-  return null
 }
-
-export default MovementPath

@@ -1,11 +1,16 @@
 export { queryKeys } from './queryKeys'
+
+// API
 export { useApiKey } from './useApiKey'
-export { useBaseMovement } from './useBaseMovement'
-export { useBasePosition } from './useBasePosition'
-export { useConnectionStatus } from './useConnectionStatus'
-export { useDroneCount } from './useDroneCount'
-export { useDroneLog } from './useDroneLog'
-export { useDrones } from './useDrones'
-export { useHeartbeatLog } from './useHeartbeatLog'
-export { useServerConfig } from './useServerConfig'
-export { useServerRunning } from './useServerRunning'
+
+// Server
+export { useServerRunning, useServerConfig, useConnectionStatus } from './server'
+
+// Map
+export { useBasePosition, useBaseMovement } from './map'
+
+// Drones
+export { useDrones, useDroneCount } from './drones'
+
+// Settings
+export { useHeartbeatLog, useDroneLog } from './settings'
